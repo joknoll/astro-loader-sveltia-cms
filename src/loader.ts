@@ -6,37 +6,12 @@ import { frontmatterFormats } from "./schema.js";
 import { transformFieldValues } from "./transforms.js";
 import { buildCollectionSchema } from "./type-gen.js";
 
-type LoaderWithSchema = Loader & {
+export type SveltiaLoader = Loader & {
   createSchema: () => ReturnType<typeof buildCollectionSchema>;
 };
-
-export { readCmsConfig, resolveCollection } from "./config.js";
-export {
-  frontmatterFormats,
-  isOptionalField,
-  getSelectValues,
-  selectValuesToZod,
-  fieldToZod,
-  sveltiaSchema,
-} from "./schema.js";
-
-export type SveltiaLoader = LoaderWithSchema;
 export type SveltiaEntryCollection = EntryCollection;
 export type SveltiaField = Field;
 export type SveltiaConfig = CmsConfig;
-
-// Module-level cache: keyed by collection name so multiple sveltiaLoader("posts")
-// calls share the same resolved EntryCollection without repeated disk reads.
-const collectionCache = new Map<string, EntryCollection>();
-
-function getCachedCollection(name: string): EntryCollection {
-  const cached = collectionCache.get(name);
-  if (cached) return cached;
-  const config = readCmsConfig();
-  const collection = resolveCollection(config, name);
-  collectionCache.set(name, collection);
-  return collection;
-}
 
 function wrapContextWithTransforms(
   context: LoaderContext,
@@ -61,10 +36,10 @@ function wrapContextWithTransforms(
 }
 
 export function sveltiaLoader(collectionOrName: string | EntryCollection): SveltiaLoader {
-  const getCollection =
+  const getCollection = () =>
     typeof collectionOrName === "string"
-      ? () => getCachedCollection(collectionOrName)
-      : () => collectionOrName;
+      ? resolveCollection(readCmsConfig(), collectionOrName)
+      : collectionOrName;
 
   return {
     name: "sveltia-cms",

@@ -1,11 +1,10 @@
 import type { AstroIntegration } from "astro";
-import type { CmsConfig, EntryCollection } from "@sveltia/cms";
+import type { CmsConfig } from "@sveltia/cms";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { isEntryCollection } from "./config.js";
 
 export type { CmsConfig };
-
-export type SveltiaConfig = CmsConfig;
 
 export type SveltiaOptions = {
   route?: string;
@@ -15,17 +14,6 @@ export type SveltiaOptions = {
 
 const VIRTUAL_MODULE_ID = "virtual:astro-loader-sveltia-cms/config";
 const RESOLVED_VIRTUAL_MODULE_ID = "\0" + VIRTUAL_MODULE_ID;
-
-function isEntryCollection(c: unknown): c is EntryCollection {
-  return (
-    typeof c === "object" &&
-    c !== null &&
-    "name" in c &&
-    typeof (c as EntryCollection).name === "string" &&
-    "folder" in c &&
-    "fields" in c
-  );
-}
 
 function getEntryCollectionNames(config: CmsConfig): string[] {
   return (config.collections ?? []).filter(isEntryCollection).map((c) => c.name);
@@ -73,14 +61,7 @@ export default function sveltiaCms(options: SveltiaOptions): AstroIntegration {
         // Write config to .astro/integrations/astro-loader-sveltia-cms/config.json so
         // the content loader can read it without a live Vite server.
         const codegenDir = createCodegenDir();
-        const configPath = fileURLToPath(new URL("config.json", codegenDir));
-        try {
-          writeFileSync(configPath, JSON.stringify(config));
-        } catch (err) {
-          throw new Error(
-            `[astro-loader-sveltia-cms] Failed to write CMS config to ${configPath}: ${String(err)}`,
-          );
-        }
+        writeFileSync(fileURLToPath(new URL("config.json", codegenDir)), JSON.stringify(config));
 
         // Register the virtual module used by admin.astro at runtime.
         updateConfig({

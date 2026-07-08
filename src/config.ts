@@ -3,7 +3,23 @@ import type { CmsConfig, EntryCollection, FileCollection } from "@sveltia/cms";
 
 const CONFIG_PATH = ".astro/integrations/astro-loader-sveltia-cms/config.json";
 
+export function isEntryCollection(c: unknown): c is EntryCollection {
+  return (
+    typeof c === "object" &&
+    c !== null &&
+    "name" in c &&
+    typeof (c as EntryCollection).name === "string" &&
+    "folder" in c &&
+    "fields" in c
+  );
+}
+
+// ponytail: config.json is written once per process by the integration hook,
+// so a single module-level cache is enough.
+let cachedConfig: CmsConfig | undefined;
+
 export function readCmsConfig(): CmsConfig {
+  if (cachedConfig) return cachedConfig;
   const configPath = `${process.cwd()}/${CONFIG_PATH}`;
   try {
     const raw = readFileSync(configPath, "utf-8");
@@ -14,7 +30,8 @@ export function readCmsConfig(): CmsConfig {
           `(got ${parsed === null ? "null" : typeof parsed}).`,
       );
     }
-    return parsed as CmsConfig;
+    cachedConfig = parsed as CmsConfig;
+    return cachedConfig;
   } catch (err) {
     if (err instanceof Error && err.message.startsWith("[sveltiaLoader]")) throw err;
     throw new Error(
@@ -26,7 +43,6 @@ export function readCmsConfig(): CmsConfig {
 
 export function resolveCollection(config: CmsConfig, name: string): EntryCollection {
   const collections = config.collections ?? [];
-  // Phase 1: find any named collection (EntryCollection or FileCollection).
   const match = collections.find((c) => "name" in c && c.name === name);
 
   if (!match) {
@@ -40,13 +56,12 @@ export function resolveCollection(config: CmsConfig, name: string): EntryCollect
     );
   }
 
-  // Phase 2: narrow to an entry collection (folder-based, with fields).
-  if (!("folder" in match) || !("fields" in match)) {
+  if (!isEntryCollection(match)) {
     throw new Error(
       `[sveltiaLoader] Collection "${name}" is not a folder-based entry collection. ` +
         `Only entry collections (with "folder" and "fields") are supported by sveltiaLoader.`,
     );
   }
 
-  return match as EntryCollection;
+  return match;
 }

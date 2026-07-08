@@ -58,7 +58,7 @@
     "vitest": "^4.1.1"
   },
   "peerDependencies": {
-    "astro": "^6.0.8"
+    "astro": "^6.0.8 || ^7.0.0"
   },
   "devEngines": {
     "packageManager": {

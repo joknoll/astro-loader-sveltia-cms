@@ -1,4 +1,6 @@
 ---
+import { title } from "virtual:astro-loader-sveltia-cms/config";
+
 export const prerender = true;
 ---
 
@@ -8,19 +10,13 @@ export const prerender = true;
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="robots" content="noindex" />
-        <title>Content Management</title>
+        <title>{title}</title>
     </head>
     <body>
         <script>
             import { init } from "@sveltia/cms";
-            import {
-                config,
-                title,
-            } from "virtual:astro-loader-sveltia-cms/config";
+            import { config } from "virtual:astro-loader-sveltia-cms/config";
 
-            if (title !== undefined) {
-                document.title = title;
-            }
             init({ config });
         </script>
     </body>

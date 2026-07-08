@@ -1,6 +1,6 @@
-import type { Field } from "@sveltia/cms";
-import { getWidget, isBodyField } from "./field-types.js";
-import type { MultipleField, ObjectField, ListField, RelationField } from "./field-types.js";
+import type { Field, ImageField, RelationField } from "@sveltia/cms";
+import { getWidget, isBodyField } from "./schema.js";
+import type { LooseListField, LooseObjectField } from "./schema.js";
 
 export const IMAGE_IMPORT_PREFIX = "__ASTRO_IMAGE_";
 
@@ -18,7 +18,7 @@ export function normalizeImagePath(val: string): string {
 }
 
 function prefixImageValue(value: unknown, field: Field): unknown {
-  const isMultiple = (field as MultipleField).multiple;
+  const isMultiple = (field as ImageField).multiple;
   if (isMultiple && Array.isArray(value)) {
     return value.map((v) =>
       typeof v === "string" && v ? `${IMAGE_IMPORT_PREFIX}${normalizeImagePath(v)}` : v,
@@ -63,7 +63,7 @@ export function transformFieldValues(
       const { collection, multiple } = field as RelationField;
       result[field.name] = transformRelationValue(result[field.name], collection, multiple);
     } else if (widget === "object") {
-      const { fields: subFields, types, typeKey = "type" } = field as ObjectField;
+      const { fields: subFields, types, typeKey = "type" } = field as LooseObjectField;
       const obj = result[field.name];
       if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
         if (types) {
@@ -84,7 +84,12 @@ export function transformFieldValues(
         }
       }
     } else if (widget === "list") {
-      const { field: singleField, fields: subFields, types, typeKey = "type" } = field as ListField;
+      const {
+        field: singleField,
+        fields: subFields,
+        types,
+        typeKey = "type",
+      } = field as LooseListField;
       const arr = result[field.name];
       if (Array.isArray(arr)) {
         if (types) {
