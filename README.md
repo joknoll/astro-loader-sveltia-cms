@@ -1,6 +1,6 @@
 # astro-loader-sveltia-cms
 
-Sveltia CMS integration for Astro 6 and 7.
+Sveltia CMS integration for Astro 7.
 This serves the [Sveltia CMS](https://sveltiacms.app) admin UI and provides a
 content loader for Astro content collections, including automatic Zod schema generation.
 
