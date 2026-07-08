@@ -16,7 +16,7 @@
   "author": "Johannes Knoll <mail@joknoll.de>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/joknokll/astro-loader-sveltia-cms.git"
+    "url": "git+https://github.com/joknoll/astro-loader-sveltia-cms.git"
   },
   "directories": {
     "example": "example"
@@ -25,9 +25,12 @@
     "dist"
   ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
-    "./package.json": "./package.json"
+    "./loader": "./dist/loader.mjs",
+    "./package.json": "./package.json",
+    "./admin.astro": "./dist/admin.astro"
   },
   "publishConfig": {
     "access": "public"
@@ -40,13 +43,22 @@
     "prepublishOnly": "vp run build",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@sveltia/cms": "^0.149.0",
+    "zod-to-ts": "^2.0.0"
+  },
   "devDependencies": {
     "@types/node": "^25.6.2",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
+    "astro": "^6.0.8",
     "bumpp": "^11.1.0",
     "typescript": "^6.0.3",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest": "^4.1.1"
+  },
+  "peerDependencies": {
+    "astro": "^6.0.8"
   },
   "devEngines": {
     "packageManager": {
