@@ -1,0 +1,41 @@
+---
+import { Image } from "astro:assets";
+import { getEntry } from "astro:content";
+import { type CollectionEntry, getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+    const posts = await getCollection("posts");
+    return posts.map((post) => ({
+        params: { slug: post.id },
+        props: post,
+    }));
+}
+type Props = CollectionEntry<"posts">;
+
+const post = Astro.props;
+const { Content } = await render(post);
+
+const author = await getEntry(post.data.author);
+---
+
+<header>
+    <hgroup>
+        <h1>{post.data.title}</h1>
+        <p>{author.data.name}</p>
+    </hgroup>
+    <time>{post.data.date}</time>
+    {post.data.cover && <Image src={post.data.cover} alt={post.data.title} />}
+</header>
+
+<article>
+    <p>
+        <Content />
+    </p>
+</article>
+
+<footer>
+    <h2>About the author: {author.data.name}</h2>
+    <p>
+        {author.data.bio}
+    </p>
+</footer>
