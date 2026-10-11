@@ -13,30 +13,26 @@ import { defineConfig } from "astro/config";
 import sveltia from "astro-loader-sveltia-cms";
 
 export default defineConfig({
-  integrations: [
-    sveltia({
-      config: {
-        backend: {
-          name: "github",
-          repo: "my-org/my-site",
-          branch: "main",
-        },
-        media_folder: "public/images",
-        collections: [
-          {
-            name: "posts",
-            folder: "src/content/posts",
-            fields: [
-              { name: "title", widget: "string" },
-              { name: "date", widget: "datetime" },
-              { name: "draft", widget: "boolean", required: false },
-              { name: "body", widget: "markdown" },
-            ],
-          },
-        ],
-      },
-    }),
-  ],
+    integrations: [
+        sveltia({
+            config: {
+                backend: { name: "github", repo: "my-org/my-site", branch: "main" },
+                media_folder: "public/images",
+                collections: [
+                    {
+                        name: "posts",
+                        folder: "src/content/posts",
+                        fields: [
+                            { name: "title", widget: "string" },
+                            { name: "date", widget: "datetime" },
+                            { name: "draft", widget: "boolean", required: false },
+                            { name: "body", widget: "markdown" },
+                        ],
+                    },
+                ],
+            },
+        }),
+    ],
 });
 ```
 
@@ -46,9 +42,7 @@ Use the content loader in `src/content.config.ts`:
 import { defineCollection } from "astro:content";
 import { sveltiaLoader } from "astro-loader-sveltia-cms/loader";
 
-const posts = defineCollection({
-  loader: sveltiaLoader("posts"),
-});
+const posts = defineCollection({ loader: sveltiaLoader("posts") });
 
 export const collections = { posts };
 ```
@@ -61,5 +55,8 @@ vp check
 vp test
 vp pack
 ```
+
+Use `vp run format` to format code and `vp run format:check` to verify formatting.
+See [Code style](docs/code-style.md) for the formatter profile and unsupported rules.
 
 See the `example` directory for a complete Astro setup.

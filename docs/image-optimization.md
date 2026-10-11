@@ -23,7 +23,10 @@ const schema = sveltiaSchema(collection.fields, { imageSchemas });
 // imageSchemas.schemas holds the exact z.string() instances for image fields
 
 const overrides: TypeOverrideMap = new Map(
-  imageSchemas.schemas.map((s) => [s, (ts) => ts.factory.createTypeReferenceNode("ImageMetadata")]),
+    imageSchemas.schemas.map((s) => [
+        s,
+        (ts) => ts.factory.createTypeReferenceNode("ImageMetadata"),
+    ]),
 );
 ```
 
@@ -43,8 +46,8 @@ Astro detects image fields at build/load time by scanning stored entry data for 
 ```typescript
 // wrapContextForImages replaces context.parseData before delegating to the inner glob loader
 context.parseData = (opts) => {
-  const transformed = transformFieldValues(opts.data, collection.fields);
-  return originalParseData({ ...opts, data: transformed });
+    const transformed = transformFieldValues(opts.data, collection.fields);
+    return originalParseData({ ...opts, data: transformed });
 };
 ```
 
@@ -80,9 +83,7 @@ No configuration is needed. Define the collection using only the loader:
 import { defineCollection } from "astro:content";
 import { sveltiaLoader } from "astro-loader-sveltia-cms/loader";
 
-const posts = defineCollection({
-  loader: sveltiaLoader("posts"),
-});
+const posts = defineCollection({ loader: sveltiaLoader("posts") });
 
 export const collections = { posts };
 ```

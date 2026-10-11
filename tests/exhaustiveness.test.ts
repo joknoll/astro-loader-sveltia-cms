@@ -24,8 +24,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+
 import type { BuiltInFieldType } from "@sveltia/cms";
+import { describe, expect, it } from "vitest";
 
 // This object must have exactly one key per member of BuiltInFieldType.
 //
@@ -40,26 +41,26 @@ import type { BuiltInFieldType } from "@sveltia/cms";
 // Neither error is reachable at runtime — this is a pure type-level check.
 
 const _exhaustiveWidgetCoverage: Record<BuiltInFieldType, true> = {
-  boolean: true,
-  code: true,
-  color: true,
-  compute: true,
-  datetime: true,
-  file: true,
-  hidden: true,
-  image: true,
-  keyvalue: true,
-  list: true,
-  map: true,
-  markdown: true,
-  number: true,
-  object: true,
-  relation: true,
-  richtext: true,
-  select: true,
-  string: true,
-  text: true,
-  uuid: true,
+    boolean: true,
+    code: true,
+    color: true,
+    compute: true,
+    datetime: true,
+    file: true,
+    hidden: true,
+    image: true,
+    keyvalue: true,
+    list: true,
+    map: true,
+    markdown: true,
+    number: true,
+    object: true,
+    relation: true,
+    richtext: true,
+    select: true,
+    string: true,
+    text: true,
+    uuid: true,
 };
 
 // Suppress "declared but never read" — the value is only here for the type check.
@@ -69,93 +70,99 @@ void _exhaustiveWidgetCoverage;
 const KNOWN_WIDGET_TYPES = Object.keys(_exhaustiveWidgetCoverage) as BuiltInFieldType[];
 
 function loadSveltiaSchema(): {
-  definitions: {
-    CustomField: {
-      properties: {
-        widget: {
-          not: { enum: string[] };
-        };
-      };
+    definitions: {
+        CustomField: { properties: { widget: { not: { enum: string[] } } } };
     };
-  };
 } {
-  // Vitest does not support import.meta.resolve, so we resolve the schema
-  // relative to the project root (process.cwd() in Vitest = workspace root).
-  const schemaPath = join(process.cwd(), "node_modules/@sveltia/cms/schema/sveltia-cms.json");
-  return JSON.parse(readFileSync(schemaPath, "utf-8"));
+    // Vitest does not support import.meta.resolve, so we resolve the schema
+    // relative to the project root (process.cwd() in Vitest = workspace root).
+    const schemaPath = join(
+        process.cwd(),
+        "node_modules/@sveltia/cms/schema/sveltia-cms.json",
+    );
+    return JSON.parse(readFileSync(schemaPath, "utf-8"));
 }
 
 describe("exhaustiveness — JSON Schema canary (schema → our list)", () => {
-  it("loads the @sveltia/cms JSON Schema without error", () => {
-    expect(() => loadSveltiaSchema()).not.toThrow();
-  });
+    it("loads the @sveltia/cms JSON Schema without error", () => {
+        expect(() => loadSveltiaSchema()).not.toThrow();
+    });
 
-  it("every widget type in the JSON Schema is present in KNOWN_WIDGET_TYPES", () => {
-    const schema = loadSveltiaSchema();
-    const schemaTypes: string[] = schema.definitions.CustomField.properties.widget.not.enum;
+    it("every widget type in the JSON Schema is present in KNOWN_WIDGET_TYPES", () => {
+        const schema = loadSveltiaSchema();
+        const schemaTypes: string[] =
+            schema.definitions.CustomField.properties.widget.not.enum;
 
-    const unknown = schemaTypes.filter((t) => !KNOWN_WIDGET_TYPES.includes(t as BuiltInFieldType));
+        const unknown = schemaTypes.filter(
+            (t) => !KNOWN_WIDGET_TYPES.includes(t as BuiltInFieldType),
+        );
 
-    expect(
-      unknown,
-      [
-        `New widget type(s) found in @sveltia/cms that are not yet handled by fieldToZod:`,
-        `  ${unknown.map((t) => JSON.stringify(t)).join(", ")}`,
-        ``,
-        `To fix this failure:`,
-        `  1. Add a case to the fieldToZod() switch in src/schema.ts`,
-        `  2. Add the type to _exhaustiveWidgetCoverage in tests/exhaustiveness.test.ts`,
-        `  3. Add tests in tests/field-to-zod.test.ts`,
-      ].join("\n"),
-    ).toHaveLength(0);
-  });
+        expect(
+            unknown,
+            [
+                `New widget type(s) found in @sveltia/cms that are not yet handled by fieldToZod:`,
+                `  ${unknown.map((t) => JSON.stringify(t)).join(", ")}`,
+                ``,
+                `To fix this failure:`,
+                `  1. Add a case to the fieldToZod() switch in src/schema.ts`,
+                `  2. Add the type to _exhaustiveWidgetCoverage in tests/exhaustiveness.test.ts`,
+                `  3. Add tests in tests/field-to-zod.test.ts`,
+            ].join("\n"),
+        ).toHaveLength(0);
+    });
 
-  it("every type in KNOWN_WIDGET_TYPES is still present in the JSON Schema", () => {
-    const schema = loadSveltiaSchema();
-    const schemaTypes: string[] = schema.definitions.CustomField.properties.widget.not.enum;
+    it("every type in KNOWN_WIDGET_TYPES is still present in the JSON Schema", () => {
+        const schema = loadSveltiaSchema();
+        const schemaTypes: string[] =
+            schema.definitions.CustomField.properties.widget.not.enum;
 
-    const removed = KNOWN_WIDGET_TYPES.filter((t) => !schemaTypes.includes(t));
+        const removed = KNOWN_WIDGET_TYPES.filter((t) => !schemaTypes.includes(t));
 
-    expect(
-      removed,
-      [
-        `Widget type(s) removed from @sveltia/cms that are still in KNOWN_WIDGET_TYPES:`,
-        `  ${removed.map((t) => JSON.stringify(t)).join(", ")}`,
-        ``,
-        `To fix this failure:`,
-        `  1. Remove the case from fieldToZod() in src/schema.ts (if appropriate)`,
-        `  2. Remove the type from _exhaustiveWidgetCoverage in tests/exhaustiveness.test.ts`,
-        `  3. Remove or update the corresponding tests in tests/field-to-zod.test.ts`,
-      ].join("\n"),
-    ).toHaveLength(0);
-  });
+        expect(
+            removed,
+            [
+                `Widget type(s) removed from @sveltia/cms that are still in KNOWN_WIDGET_TYPES:`,
+                `  ${removed.map((t) => JSON.stringify(t)).join(", ")}`,
+                ``,
+                `To fix this failure:`,
+                `  1. Remove the case from fieldToZod() in src/schema.ts (if appropriate)`,
+                `  2. Remove the type from _exhaustiveWidgetCoverage in tests/exhaustiveness.test.ts`,
+                `  3. Remove or update the corresponding tests in tests/field-to-zod.test.ts`,
+            ].join("\n"),
+        ).toHaveLength(0);
+    });
 
-  it("the JSON Schema widget list and KNOWN_WIDGET_TYPES are identical sets", () => {
-    const schema = loadSveltiaSchema();
-    const schemaSet = new Set<string>(schema.definitions.CustomField.properties.widget.not.enum);
-    const knownSet = new Set<string>(KNOWN_WIDGET_TYPES);
+    it("the JSON Schema widget list and KNOWN_WIDGET_TYPES are identical sets", () => {
+        const schema = loadSveltiaSchema();
+        const schemaSet = new Set<string>(
+            schema.definitions.CustomField.properties.widget.not.enum,
+        );
+        const knownSet = new Set<string>(KNOWN_WIDGET_TYPES);
 
-    expect(schemaSet).toEqual(knownSet);
-  });
+        expect(schemaSet).toEqual(knownSet);
+    });
 });
 
 describe("exhaustiveness — coverage cross-check (our list → tests)", () => {
-  const testFilePath = join(dirname(fileURLToPath(import.meta.url)), "field-to-zod.test.ts");
-  const testFileContent = readFileSync(testFilePath, "utf-8");
+    const testFilePath = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "field-to-zod.test.ts",
+    );
+    const testFileContent = readFileSync(testFilePath, "utf-8");
 
-  for (const widgetType of KNOWN_WIDGET_TYPES) {
-    it(`field-to-zod.test.ts has a describe block for widget: "${widgetType}"`, () => {
-      const pattern = new RegExp(`widget.*"${widgetType}"`);
+    for (const widgetType of KNOWN_WIDGET_TYPES) {
+        it(`field-to-zod.test.ts has a describe block for widget: "${widgetType}"`, () => {
+            const pattern = new RegExp(`widget.*"${widgetType}"`);
 
-      expect(
-        pattern.test(testFileContent),
-        [
-          `No describe block found for widget type "${widgetType}" in tests/field-to-zod.test.ts.`,
-          ``,
-          `To fix this failure, add a describe block like:`,
-          `  describe('fieldToZod — widget: "${widgetType}"', () => { ... })`,
-        ].join("\n"),
-      ).toBe(true);
-    });
-  }
+            expect(
+                pattern.test(testFileContent),
+                [
+                    `No describe block found for widget type "${widgetType}" in tests/field-to-zod.test.ts.`,
+                    ``,
+                    `To fix this failure, add a describe block like:`,
+                    `  describe('fieldToZod — widget: "${widgetType}"', () => { ... })`,
+                ].join("\n"),
+            ).toBe(true);
+        });
+    }
 });

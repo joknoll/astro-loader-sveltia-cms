@@ -1,70 +1,72 @@
 {
-  "name": "astro-loader-sveltia-cms",
-  "version": "0.2.0",
-  "description": "Sveltia CMS integration for Astro",
-  "keywords": [
-    "astro-integration",
-    "astro-loader",
-    "sveltiacms",
-    "withastro"
-  ],
-  "homepage": "https://github.com/joknoll/astro-loader-sveltia-cms#readme",
-  "bugs": {
-    "url": "https://github.com/joknoll/astro-loader-sveltia-cms/issues"
-  },
-  "license": "MIT",
-  "author": "Johannes Knoll <mail@joknoll.de>",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/joknoll/astro-loader-sveltia-cms.git"
-  },
-  "directories": {
-    "example": "example"
-  },
-  "files": [
-    "dist"
-  ],
-  "type": "module",
-  "types": "./dist/index.d.mts",
-  "exports": {
-    ".": "./dist/index.mjs",
-    "./loader": "./dist/loader.mjs",
-    "./package.json": "./package.json",
-    "./admin.astro": "./dist/admin.astro"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch",
-    "test": "vp test",
-    "check": "vp check",
-    "prepublishOnly": "vp run build",
-    "prepare": "vp config"
-  },
-  "dependencies": {
-    "@sveltia/cms": "^0.149.0",
-    "zod-to-ts": "^2.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^25.6.2",
-    "@typescript/native-preview": "7.0.0-dev.20260509.2",
-    "astro": "^7.0.0",
-    "bumpp": "^11.1.0",
-    "typescript": "^6.0.3",
-    "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "^4.1.1"
-  },
-  "peerDependencies": {
-    "astro": "^7.0.0"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.10.0",
-      "onFail": "download"
+    "name": "astro-loader-sveltia-cms",
+    "version": "0.2.0",
+    "description": "Sveltia CMS integration for Astro",
+    "keywords": [
+        "astro-integration",
+        "astro-loader",
+        "sveltiacms",
+        "withastro"
+    ],
+    "homepage": "https://github.com/joknoll/astro-loader-sveltia-cms#readme",
+    "bugs": {
+        "url": "https://github.com/joknoll/astro-loader-sveltia-cms/issues"
+    },
+    "license": "MIT",
+    "author": "Johannes Knoll <mail@joknoll.de>",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/joknoll/astro-loader-sveltia-cms.git"
+    },
+    "directories": {
+        "example": "example"
+    },
+    "files": [
+        "dist"
+    ],
+    "type": "module",
+    "types": "./dist/index.d.mts",
+    "exports": {
+        ".": "./dist/index.mjs",
+        "./loader": "./dist/loader.mjs",
+        "./package.json": "./package.json",
+        "./admin.astro": "./dist/admin.astro"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "vp pack",
+        "dev": "vp pack --watch",
+        "test": "vp test",
+        "check": "vp check",
+        "format": "vp fmt .",
+        "format:check": "vp fmt --check .",
+        "prepublishOnly": "vp run build",
+        "prepare": "vp config"
+    },
+    "dependencies": {
+        "@sveltia/cms": "^0.149.0",
+        "zod-to-ts": "^2.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.2",
+        "@typescript/native-preview": "7.0.0-dev.20260509.2",
+        "astro": "^7.0.0",
+        "bumpp": "^11.1.0",
+        "typescript": "^6.0.3",
+        "vite": "catalog:",
+        "vite-plus": "catalog:",
+        "vitest": "^4.1.1"
+    },
+    "peerDependencies": {
+        "astro": "^7.0.0"
+    },
+    "devEngines": {
+        "packageManager": {
+            "name": "pnpm",
+            "version": "11.10.0",
+            "onFail": "download"
+        }
     }
-  }
 }

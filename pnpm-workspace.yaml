@@ -1,16 +1,16 @@
 packages:
-  - example
+    - example
 
 allowBuilds:
-  esbuild: true
-  sharp: true
+    esbuild: true
+    sharp: true
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.2
-  vite-plus: 0.2.2
+    vite: npm:@voidzero-dev/vite-plus-core@0.2.2
+    vite-plus: 0.2.2
 overrides:
-  vite: "catalog:"
+    vite: "catalog:"
 peerDependencyRules:
-  allowAny:
-    - vite
-  allowedVersions:
-    vite: "*"
+    allowAny:
+        - vite
+    allowedVersions:
+        vite: "*"

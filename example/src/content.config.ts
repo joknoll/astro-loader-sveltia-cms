@@ -1,13 +1,9 @@
-import { defineCollection } from "astro:content";
 import { sveltiaLoader } from "astro-loader-sveltia-cms/loader";
+import { defineCollection } from "astro:content";
 
-const authors = defineCollection({
-  loader: sveltiaLoader("authors"),
-});
+const authors = defineCollection({ loader: sveltiaLoader("authors") });
 
-const posts = defineCollection({
-  loader: sveltiaLoader("posts"),
-});
+const posts = defineCollection({ loader: sveltiaLoader("posts") });
 
 export const collections = { authors, posts };
 
