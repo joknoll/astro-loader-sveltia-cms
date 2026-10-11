@@ -4,25 +4,23 @@ import type { CmsConfig, EntryCollection, FileCollection } from "@sveltia/cms";
 
 const CONFIG_PATH = ".astro/integrations/astro-loader-sveltia-cms/config.json";
 
-export function isEntryCollection(c: unknown): c is EntryCollection {
+export type FolderCollection = EntryCollection & { folder: string };
+
+export function isEntryCollection(c: unknown): c is FolderCollection {
     return (
         typeof c === "object" &&
         c !== null &&
         "name" in c &&
         typeof (c as EntryCollection).name === "string" &&
         "folder" in c &&
-        "fields" in c
+        typeof c.folder === "string" &&
+        c.folder.trim().length > 0 &&
+        "fields" in c &&
+        Array.isArray(c.fields)
     );
 }
 
-// ponytail: config.json is written once per process by the integration hook,
-// so a single module-level cache is enough.
-let cachedConfig: CmsConfig | undefined;
-
 export function readCmsConfig(): CmsConfig {
-    if (cachedConfig) {
-        return cachedConfig;
-    }
     const configPath = `${process.cwd()}/${CONFIG_PATH}`;
     try {
         const raw = readFileSync(configPath, "utf-8");
@@ -33,8 +31,7 @@ export function readCmsConfig(): CmsConfig {
                     `(got ${parsed === null ? "null" : typeof parsed}).`,
             );
         }
-        cachedConfig = parsed as CmsConfig;
-        return cachedConfig;
+        return parsed as CmsConfig;
     } catch (err) {
         if (err instanceof Error && err.message.startsWith("[sveltiaLoader]")) {
             throw err;
@@ -42,6 +39,7 @@ export function readCmsConfig(): CmsConfig {
         throw new Error(
             `[sveltiaLoader] Could not read CMS config from ${configPath}. ` +
                 `Make sure the astro-loader-sveltia-cms integration is added to your astro.config.mjs.`,
+            { cause: err },
         );
     }
 }

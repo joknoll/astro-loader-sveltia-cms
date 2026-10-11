@@ -142,20 +142,14 @@ export function transformFieldValues(
                             : item,
                     );
                 } else if (singleField) {
-                    if (getWidget(singleField) === "image") {
-                        result[field.name] = arr.map((v) =>
-                            prefixImageValue(v, singleField),
-                        );
-                    } else if (getWidget(singleField) === "relation") {
-                        const { collection, multiple } = singleField as RelationField;
-                        // The list handler already unwrapped the array, so the full array is passed
-                        // to transformRelationValue — default to multiple so it maps over elements.
-                        result[field.name] = transformRelationValue(
-                            arr,
-                            collection,
-                            multiple ?? true,
-                        );
-                    }
+                    result[field.name] = arr.map(
+                        (value) =>
+                            transformFieldValues(
+                                { [singleField.name]: value },
+                                [singleField],
+                                false,
+                            )[singleField.name],
+                    );
                 }
             }
         }

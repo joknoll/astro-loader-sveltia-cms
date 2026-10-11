@@ -47,6 +47,14 @@ const posts = defineCollection({ loader: sveltiaLoader("posts") });
 export const collections = { posts };
 ```
 
+## Loader support and limitations
+
+- Collections must have a non-empty `folder` and a `fields` array. File-backed collections and `{{locale}}` folder placeholders are rejected.
+- When `extension` is omitted, the loader uses `yml` for YAML, `json` for JSON, `toml` for TOML, `txt` for raw files, and `md` otherwise. Astro must have an entry parser registered for the selected extension; inferring an extension does not add a parser.
+- Name-based lookup currently reads `.astro/integrations/astro-loader-sveltia-cms/config.json` relative to the working directory. Run Astro from the site root with its default generated-files directory, or pass a collection object directly to the loader.
+- Relations are converted to Astro references assuming the stored value matches the target entry ID and the CMS collection name matches the Astro collection key. Custom `value_field` mappings are not resolved.
+- Top-level list/key-value storage (`root: true`) and locale-specific data layouts are not supported.
+
 ## Development
 
 ```bash
