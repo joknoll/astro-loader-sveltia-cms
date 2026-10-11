@@ -46,13 +46,13 @@
         "prepare": "vp config"
     },
     "dependencies": {
-        "@sveltia/cms": "^0.149.0",
+        "@sveltia/cms": "^0.233.1",
         "zod-to-ts": "^2.0.0"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",
         "@typescript/native-preview": "7.0.0-dev.20260509.2",
-        "astro": "^7.0.0",
+        "astro": "^7.3.8",
         "bumpp": "^11.1.0",
         "typescript": "^6.0.3",
         "vite": "catalog:",
