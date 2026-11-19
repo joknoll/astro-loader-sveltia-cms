@@ -59,3 +59,16 @@ See the [example site](example/) and [image guide](docs/image-optimization.md).
 
 Use Node.js 22.23.4 or newer and Vite+: `vp install`, `vp check`, `vp test`,
 `vp pack`. See [code style](docs/code-style.md).
+
+## Releasing
+
+Before the first automated release, add a GitHub Actions Trusted Publisher in
+the [npm package settings](https://www.npmjs.com/package/astro-loader-sveltia-cms/access).
+Use owner `joknoll`, repository `astro-loader-sveltia-cms`, and workflow
+`publish.yml`. Leave the environment blank and allow direct publishing.
+Complete the first publish within two days of adding the publisher.
+
+Commit the new version in `package.json` to `main`, then push its matching tag,
+such as `v0.2.1`. The workflow runs the checks and both builds, then publishes the
+packed library with provenance. A manual run from Actions builds and packages
+the library for inspection.
