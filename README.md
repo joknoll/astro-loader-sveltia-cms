@@ -70,5 +70,11 @@ Complete the first publish within two days of adding the publisher.
 
 Commit the new version in `package.json` to `main`, then push its matching tag,
 such as `v0.2.1`. The workflow runs the checks and both builds, then publishes the
-packed library with provenance. A manual run from Actions builds and packages
-the library for inspection.
+packed library with provenance. A manual run with the default input builds and
+packages the library for inspection.
+
+The Monday dependency workflow prepares a patch version in its update PR. Once
+the checks pass, it merges the PR, tags that commit, and starts the publish
+workflow. GitHub assigns a repository issue to the maintainer when an update,
+merge, or release needs attention. If GitHub requires a manual merge, merging
+the dependency PR starts the release.

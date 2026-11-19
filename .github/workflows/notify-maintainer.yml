@@ -1,0 +1,35 @@
+name: Notify the maintainer
+
+on:
+    workflow_call:
+        inputs:
+            title:
+                required: true
+                type: string
+            details:
+                required: true
+                type: string
+
+jobs:
+    notify:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            issues: write
+        steps:
+            - name: Open or update the GitHub issue
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TITLE: ${{ inputs.title }}
+                  DETAILS: ${{ inputs.details }}
+              run: |
+                  run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                  body=$(printf '@%s\n\n%s\n\n[View the workflow run](%s)\n' "$GITHUB_REPOSITORY_OWNER" "$DETAILS" "$run_url")
+                  issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$TITLE\"" --json number,title |
+                      jq -r --arg title "$TITLE" 'map(select(.title == $title)) | first | .number // empty')
+                  if [[ -n "$issue" ]]; then
+                      gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+                  else
+                      gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$body" --assignee "$GITHUB_REPOSITORY_OWNER"
+                  fi

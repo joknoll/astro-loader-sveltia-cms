@@ -5,6 +5,11 @@ on:
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+"
     workflow_dispatch:
+        inputs:
+            publish:
+                description: Publish the selected version tag
+                type: boolean
+                default: false
 
 permissions:
     contents: read
@@ -28,12 +33,12 @@ jobs:
                   run-install: false
 
             - name: Verify the release tag
-              if: github.event_name == 'push'
+              if: github.event_name == 'push' || inputs.publish
               env:
                   DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
               run: |
                   version=$(node -p 'require("./package.json").version')
-                  if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+                  if [[ "$GITHUB_REF_TYPE" != tag || "$GITHUB_REF_NAME" != "v$version" ]]; then
                       echo "::error::Release tag must match package.json version v$version."
                       exit 1
                   fi
@@ -59,7 +64,7 @@ jobs:
 
     publish:
         needs: build
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && (github.event_name == 'push' || inputs.publish)
         runs-on: ubuntu-latest
         timeout-minutes: 10
         permissions:
@@ -80,7 +85,32 @@ jobs:
                   name: npm-package
                   path: ${{ runner.temp }}
 
+            - name: Check for an existing publish of this tarball
+              id: registry
+              run: |
+                  node --input-type=module <<'JS'
+                  import { createHash } from "node:crypto";
+                  import { appendFileSync, readFileSync } from "node:fs";
+                  import { join } from "node:path";
+
+                  const { name, version } = JSON.parse(readFileSync("package.json", "utf8"));
+                  const url = `https://registry.npmjs.org/${encodeURIComponent(name)}/${version}?verify=${Date.now()}`;
+                  const metadata = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+                  if (metadata.status === 404) process.exit(0);
+                  if (!metadata.ok) throw new Error(`Registry metadata returned HTTP ${metadata.status}`);
+
+                  const { dist } = await metadata.json();
+                  const tarball = readFileSync(join(process.env.RUNNER_TEMP, "astro-loader-sveltia-cms.tgz"));
+                  const integrity = "sha512-" + createHash("sha512").update(tarball).digest("base64");
+                  if (dist.integrity !== integrity) {
+                      throw new Error(`${name}@${version} already exists with a different tarball`);
+                  }
+                  console.log(`npm already has this tarball for ${name}@${version}`);
+                  appendFileSync(process.env.GITHUB_OUTPUT, "published=true\n");
+                  JS
+
             - name: Publish with npm Trusted Publishing
+              if: steps.registry.outputs.published != 'true'
               run: vp pm publish "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz" --access public --provenance
 
             - name: Verify the published download
@@ -121,3 +151,13 @@ jobs:
                   }
                   throw new Error(`Timed out verifying ${name}@${version}`, { cause: lastError });
                   JS
+
+    notify:
+        needs: [build, publish]
+        if: failure() && (github.event_name == 'push' || inputs.publish)
+        uses: ./.github/workflows/notify-maintainer.yml
+        permissions:
+            issues: write
+        with:
+            title: npm release needs attention
+            details: Check the build and publish logs. If npm already published the same tarball, a retry will verify the download.
