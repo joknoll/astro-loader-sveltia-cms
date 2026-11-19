@@ -26,7 +26,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BuiltInFieldType } from "@sveltia/cms";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // This object must have exactly one key per member of BuiltInFieldType.
 //

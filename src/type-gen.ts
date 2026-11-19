@@ -1,5 +1,5 @@
 import type { EntryCollection } from "@sveltia/cms";
-import { z } from "astro/zod";
+import type { z } from "astro/zod";
 import type { TypeOverrideMap } from "zod-to-ts";
 import {
     createAuxiliaryTypeStore,
@@ -16,32 +16,10 @@ type TypeOverrideFunction = TypeOverrideMap extends Map<unknown, infer V> ? V : 
 const imageOverride: TypeOverrideFunction = (typescript) =>
     typescript.factory.createTypeReferenceNode("ImageMetadata");
 
-function relationOverride(collectionName: string): TypeOverrideFunction {
-    return (typescript) =>
-        typescript.factory.createTypeLiteralNode([
-            typescript.factory.createPropertySignature(
-                undefined,
-                typescript.factory.createIdentifier("collection"),
-                undefined,
-                typescript.factory.createLiteralTypeNode(
-                    typescript.factory.createStringLiteral(collectionName),
-                ),
-            ),
-            typescript.factory.createPropertySignature(
-                undefined,
-                typescript.factory.createIdentifier("id"),
-                undefined,
-                typescript.factory.createKeywordTypeNode(
-                    typescript.SyntaxKind.StringKeyword,
-                ),
-            ),
-        ]);
-}
-
 export async function buildCollectionSchema(
     collection: EntryCollection,
 ): Promise<{ schema: z.ZodType; types: string }> {
-    const ctx: SchemaContext = { imageSchemas: [], relationSchemas: new Map() };
+    const ctx: SchemaContext = { imageSchemas: [] };
     const schema = sveltiaSchema(collection.fields, {
         excludeBody: frontmatterFormats.has(collection.format),
         ctx,
@@ -50,9 +28,6 @@ export async function buildCollectionSchema(
     const overrides: TypeOverrideMap = new Map();
     for (const s of ctx.imageSchemas) {
         overrides.set(s, imageOverride);
-    }
-    for (const [s, collectionName] of ctx.relationSchemas) {
-        overrides.set(s, relationOverride(collectionName));
     }
 
     const auxiliaryTypeStore = createAuxiliaryTypeStore();

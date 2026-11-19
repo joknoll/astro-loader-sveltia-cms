@@ -1,9 +1,8 @@
 import type { Field } from "@sveltia/cms";
 import { z } from "astro/zod";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { fieldToZod } from "../src/schema.ts";
-import type { SchemaContext } from "../src/schema.ts";
 
 function accepts(schema: z.ZodType, value: unknown): void {
     const result = schema.safeParse(value);
@@ -233,7 +232,7 @@ describe('fieldToZod — widget: "file"', () => {
 });
 
 describe('fieldToZod — widget: "select"', () => {
-    it("string options → z.enum()", () => {
+    it("accepts the configured string options", () => {
         const s = fieldToZod({ name: "s", widget: "select", options: ["a", "b", "c"] });
         accepts(s, "a");
         accepts(s, "c");
@@ -241,7 +240,7 @@ describe('fieldToZod — widget: "select"', () => {
         rejects(s, 1);
     });
 
-    it("string options with multiple → z.array(z.enum())", () => {
+    it("accepts arrays of configured options for multiple selects", () => {
         const s = fieldToZod({
             name: "s",
             widget: "select",
@@ -254,7 +253,7 @@ describe('fieldToZod — widget: "select"', () => {
         rejects(s, ["x", "w"]); // "w" not in enum
     });
 
-    it("label/value options → extracts values for z.enum()", () => {
+    it("accepts values from labeled options", () => {
         const s = fieldToZod({
             name: "s",
             widget: "select",
@@ -269,7 +268,7 @@ describe('fieldToZod — widget: "select"', () => {
         rejects(s, "gamma");
     });
 
-    it("label/value with multiple → z.array(z.enum())", () => {
+    it("accepts arrays of values from labeled options", () => {
         const s = fieldToZod({
             name: "s",
             widget: "select",
@@ -283,7 +282,7 @@ describe('fieldToZod — widget: "select"', () => {
         rejects(s, ["One"]); // label, not value
     });
 
-    it("numeric options → z.union of literals", () => {
+    it("accepts the configured numeric options", () => {
         const s = fieldToZod({ name: "s", widget: "select", options: [1, 2, 3] });
         accepts(s, 1);
         accepts(s, 3);
@@ -291,28 +290,30 @@ describe('fieldToZod — widget: "select"', () => {
         rejects(s, "1");
     });
 
-    it("single numeric option → z.literal", () => {
+    it("accepts a single configured numeric option", () => {
         const s = fieldToZod({ name: "s", widget: "select", options: [99] });
         accepts(s, 99);
         rejects(s, 100);
         rejects(s, "99");
     });
 
-    it("mixed string/number/null options → z.union of literals", () => {
+    it("accepts mixed string, number, boolean and null options", () => {
         const s = fieldToZod({
             name: "s",
             widget: "select",
-            options: ["yes", 0, null],
+            options: ["yes", 0, false, null],
         });
         accepts(s, "yes");
         accepts(s, 0);
+        accepts(s, false);
         accepts(s, null);
         rejects(s, "no");
         rejects(s, 1);
+        rejects(s, true);
         rejects(s, undefined);
     });
 
-    it("mixed multiple → z.array(z.union(...))", () => {
+    it("accepts arrays of mixed options", () => {
         const s = fieldToZod({
             name: "s",
             widget: "select",
@@ -355,17 +356,6 @@ describe('fieldToZod — widget: "relation"', () => {
             { collection: "tags", id: "tag-b" },
         ]);
         rejects(s, ["tag-a", "tag-b"]);
-    });
-
-    it("records the collection name in ctx.relationSchemas", () => {
-        const ctx: SchemaContext = { imageSchemas: [], relationSchemas: new Map() };
-        const s = fieldToZod(
-            { name: "r", widget: "relation", collection: "authors" },
-            ctx,
-        );
-        expect(ctx.relationSchemas.size).toBe(1);
-        expect([...ctx.relationSchemas.values()][0]).toBe("authors");
-        expect([...ctx.relationSchemas.keys()][0]).toBe(s);
     });
 });
 

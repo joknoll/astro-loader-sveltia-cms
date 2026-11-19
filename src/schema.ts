@@ -22,12 +22,7 @@ export type LooseObjectField = {
 };
 export type LooseListField = LooseObjectField & { field?: Field };
 
-export type SchemaContext = {
-    image?: ImageFunction;
-    imageSchemas: z.ZodType[];
-    /** Maps each relation Zod schema instance to its target collection name. */
-    relationSchemas: Map<z.ZodType, string>;
-};
+export type SchemaContext = { image?: ImageFunction; imageSchemas: z.ZodType[] };
 
 /**
  * File formats that store the document body separately from frontmatter.
@@ -70,56 +65,26 @@ function applyOptional(schema: z.ZodType, field: Field): z.ZodType {
 function fieldsToShape(
     fields: Field[],
     ctx?: SchemaContext,
+    excludeBody = false,
 ): Record<string, z.ZodType> {
     const shape: Record<string, z.ZodType> = {};
     for (const field of fields) {
+        if (excludeBody && isBodyField(field)) {
+            continue;
+        }
         shape[field.name] = applyOptional(fieldToZod(field, ctx), field);
     }
     return shape;
 }
 
-export function getSelectValues(
-    options: SelectFieldValue[] | { label: string; value: SelectFieldValue }[],
-): SelectFieldValue[] {
-    if (options.length === 0) {
-        return [];
-    }
-    const first = options[0];
-    if (typeof first === "object" && first !== null && "value" in first) {
-        return (options as { label: string; value: SelectFieldValue }[]).map(
-            (o) => o.value,
-        );
-    }
-    return options as SelectFieldValue[];
+export function getSelectValues(options: SelectField["options"]): SelectFieldValue[] {
+    return options.map((option) =>
+        typeof option === "object" && option !== null ? option.value : option,
+    );
 }
 
 export function selectValuesToZod(values: SelectFieldValue[]): z.ZodType {
-    if (values.length === 0) {
-        return z.any();
-    }
-
-    const allStrings = values.every((v) => typeof v === "string");
-    if (allStrings) {
-        if (values.length === 1) {
-            return z.literal(values[0] as string);
-        }
-        return z.enum(values as [string, ...string[]]);
-    }
-
-    const literals = values.map((v) => {
-        if (v === null) {
-            return z.null();
-        }
-        if (typeof v === "number") {
-            return z.literal(v);
-        }
-        return z.literal(v as string);
-    });
-
-    if (literals.length === 1) {
-        return literals[0];
-    }
-    return z.union(literals as z.ZodType[]);
+    return values.length === 0 ? z.any() : z.literal(values);
 }
 
 type ZodObjectShape = z.ZodObject<Record<string, z.ZodType>>;
@@ -172,16 +137,10 @@ function imageFieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
  * pre-transforms them to `{ collection, id }` objects before parseData runs
  * (see transformFieldValues in transforms.ts), so the runtime schema validates
  * objects rather than strings.
- *
- * The TypeScript type is overridden in type-gen.ts to use the specific
- * collection literal: `{ collection: "members"; id: string }`.
  */
-function relationFieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
+function relationFieldToZod(field: Field): z.ZodType {
     const { collection, multiple } = field as RelationField;
     const refSchema = z.object({ collection: z.literal(collection), id: z.string() });
-    if (ctx) {
-        ctx.relationSchemas.set(refSchema, collection);
-    }
     return multiple ? z.array(refSchema) : refSchema;
 }
 
@@ -282,7 +241,7 @@ export function fieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
             return selectFieldToZod(field);
 
         case "relation":
-            return relationFieldToZod(field, ctx);
+            return relationFieldToZod(field);
 
         case "keyvalue":
             return z.record(z.string(), z.string());
@@ -308,12 +267,5 @@ export function sveltiaSchema(
     fields: Field[],
     { excludeBody = true, ctx }: { excludeBody?: boolean; ctx?: SchemaContext } = {},
 ): z.ZodObject<Record<string, z.ZodType>> {
-    const shape: Record<string, z.ZodType> = {};
-    for (const field of fields) {
-        if (excludeBody && isBodyField(field)) {
-            continue;
-        }
-        shape[field.name] = applyOptional(fieldToZod(field, ctx), field);
-    }
-    return z.object(shape);
+    return z.object(fieldsToShape(fields, ctx, excludeBody));
 }

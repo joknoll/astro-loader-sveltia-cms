@@ -1,6 +1,6 @@
 import type { Field } from "@sveltia/cms";
 import { z } from "astro/zod";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { getSelectValues, isOptionalField, selectValuesToZod } from "../src/schema.ts";
 
@@ -77,7 +77,7 @@ describe("getSelectValues", () => {
 });
 
 describe("selectValuesToZod", () => {
-    it("produces z.enum for all-string values", () => {
+    it("validates all-string options", () => {
         const schema = selectValuesToZod(["a", "b", "c"]);
         expect(schema.safeParse("a").success).toBe(true);
         expect(schema.safeParse("b").success).toBe(true);
@@ -85,21 +85,20 @@ describe("selectValuesToZod", () => {
         expect(schema.safeParse(1).success).toBe(false);
     });
 
-    it("produces z.literal for a single string value", () => {
+    it("validates a single string option", () => {
         const schema = selectValuesToZod(["only"]);
-        // single string → still z.enum(["only"]) since allStrings is true
         expect(schema.safeParse("only").success).toBe(true);
         expect(schema.safeParse("other").success).toBe(false);
     });
 
-    it("produces z.literal for a single non-string value", () => {
+    it("validates a single numeric option", () => {
         const schema = selectValuesToZod([42]);
         expect(schema.safeParse(42).success).toBe(true);
         expect(schema.safeParse(43).success).toBe(false);
         expect(schema.safeParse("42").success).toBe(false);
     });
 
-    it("produces z.union of literals for all-number values", () => {
+    it("validates all-number options", () => {
         const schema = selectValuesToZod([1, 2, 3]);
         expect(schema.safeParse(1).success).toBe(true);
         expect(schema.safeParse(3).success).toBe(true);
@@ -107,13 +106,13 @@ describe("selectValuesToZod", () => {
         expect(schema.safeParse("1").success).toBe(false);
     });
 
-    it("produces z.union including z.null() for null values", () => {
+    it("validates a null option", () => {
         const schema = selectValuesToZod([null]);
         expect(schema.safeParse(null).success).toBe(true);
         expect(schema.safeParse("").success).toBe(false);
     });
 
-    it("produces z.union for mixed string/number/null values", () => {
+    it("validates options of mixed types", () => {
         const schema = selectValuesToZod(["a", 1, null]);
         expect(schema.safeParse("a").success).toBe(true);
         expect(schema.safeParse(1).success).toBe(true);

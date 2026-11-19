@@ -5,7 +5,7 @@ export default defineConfig({
     pack: {
         entry: { index: "./src/index.ts", loader: "./src/loader.ts" },
         copy: [{ from: "src/admin.astro", to: "dist" }],
-        dts: { tsgo: true },
+        dts: true,
         exports: { customExports: { "./admin.astro": "./dist/admin.astro" } },
     },
     lint: {

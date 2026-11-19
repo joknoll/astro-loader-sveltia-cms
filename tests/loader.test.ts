@@ -1,5 +1,5 @@
 import type { CmsConfig, EntryCollection } from "@sveltia/cms";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { readCmsConfig, resolveCollection } from "../src/config.ts";
 import { sveltiaLoader } from "../src/loader.ts";

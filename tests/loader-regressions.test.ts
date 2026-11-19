@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import type { EntryCollection, Field } from "@sveltia/cms";
 import type { LoaderContext } from "astro/loaders";
 import { glob } from "astro/loaders";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { isEntryCollection, readCmsConfig } from "../src/config.ts";
 import { sveltiaLoader } from "../src/loader.ts";
@@ -15,8 +15,6 @@ vi.mock("node:fs", async (importOriginal) => ({
     ...(await importOriginal<typeof import("node:fs")>()),
     readFileSync: vi.fn(),
 }));
-
-beforeEach(() => vi.clearAllMocks());
 
 describe("collection storage", () => {
     it.each([undefined, "", "  "])("rejects an invalid folder: %s", async (folder) => {

@@ -1,5 +1,5 @@
 import type { CmsConfig } from "@sveltia/cms";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import sveltiaCms from "../src/index.ts";
 

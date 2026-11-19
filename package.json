@@ -46,18 +46,16 @@
         "prepare": "vp config"
     },
     "dependencies": {
-        "@sveltia/cms": "^0.233.1",
-        "zod-to-ts": "^2.0.0"
+        "@sveltia/cms": "^0.269.2",
+        "typescript": "^6.0.3",
+        "zod": "^4.6.7",
+        "zod-to-ts": "^2.1.0"
     },
     "devDependencies": {
-        "@types/node": "^25.6.2",
-        "@typescript/native-preview": "7.0.0-dev.20260509.2",
-        "astro": "^7.3.8",
-        "bumpp": "^11.1.0",
-        "typescript": "^6.0.3",
+        "@types/node": "^22.20.5",
+        "astro": "catalog:",
         "vite": "catalog:",
-        "vite-plus": "catalog:",
-        "vitest": "^4.1.1"
+        "vite-plus": "catalog:"
     },
     "peerDependencies": {
         "astro": "^7.0.0"
@@ -65,7 +63,7 @@
     "devEngines": {
         "packageManager": {
             "name": "pnpm",
-            "version": "11.10.0",
+            "version": "12.21.0",
             "onFail": "download"
         }
     }

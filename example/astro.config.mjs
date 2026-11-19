@@ -45,9 +45,9 @@ export default defineConfig({
                         label: "Posts",
                         folder: "src/content/posts",
                         create: true,
-                        sortable_fields: ["title", "pubDate"],
+                        sortable_fields: ["title", "date"],
                         preview_path: "/blog/{{slug}}/",
-                        preview_path_date_field: "pubDate",
+                        preview_path_date_field: "date",
                         fields: [
                             { label: "Title", name: "title", widget: "string" },
                             { label: "Date", name: "date", widget: "datetime" },

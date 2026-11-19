@@ -21,8 +21,7 @@ export function normalizeImagePath(val: string): string {
     return `./${val}`;
 }
 
-function prefixImageValue(value: unknown, field: Field): unknown {
-    const isMultiple = (field as ImageField).multiple;
+function prefixImageValue(value: unknown, isMultiple: boolean | undefined): unknown {
     if (isMultiple && Array.isArray(value)) {
         return value.map((v) =>
             typeof v === "string" && v
@@ -52,6 +51,50 @@ function transformRelationValue(
     return value;
 }
 
+function transformNestedObject(value: unknown, field: LooseObjectField): unknown {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return value;
+    }
+    const record = value as Record<string, unknown>;
+    const { fields, types, typeKey = "type" } = field;
+    const subFields = types
+        ? types.find((type) => type.name === record[typeKey])?.fields
+        : fields;
+    return subFields ? transformFieldValues(record, subFields, false) : value;
+}
+
+function transformFieldValue(value: unknown, field: Field): unknown {
+    switch (getWidget(field)) {
+        case "image":
+            return prefixImageValue(value, (field as ImageField).multiple);
+
+        case "relation": {
+            const { collection, multiple } = field as RelationField;
+            return transformRelationValue(value, collection, multiple);
+        }
+
+        case "object":
+            return transformNestedObject(value, field as LooseObjectField);
+
+        case "list": {
+            if (!Array.isArray(value)) {
+                return value;
+            }
+            const list = field as LooseListField;
+            if (list.types || list.fields) {
+                return value.map((item) => transformNestedObject(item, list));
+            }
+            const itemField = list.field;
+            return itemField
+                ? value.map((item) => transformFieldValue(item, itemField))
+                : value;
+        }
+
+        default:
+            return value;
+    }
+}
+
 export function transformFieldValues(
     data: Record<string, unknown>,
     fields: Field[],
@@ -63,95 +106,9 @@ export function transformFieldValues(
         if (excludeBody && isBodyField(field)) {
             continue;
         }
-        if (!(field.name in result) || result[field.name] == null) {
-            continue;
-        }
-
-        const widget = getWidget(field);
-
-        if (widget === "image") {
-            result[field.name] = prefixImageValue(result[field.name], field);
-        } else if (widget === "relation") {
-            const { collection, multiple } = field as RelationField;
-            result[field.name] = transformRelationValue(
-                result[field.name],
-                collection,
-                multiple,
-            );
-        } else if (widget === "object") {
-            const {
-                fields: subFields,
-                types,
-                typeKey = "type",
-            } = field as LooseObjectField;
-            const obj = result[field.name];
-            if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
-                if (types) {
-                    const variant = types.find(
-                        (t) => t.name === (obj as Record<string, unknown>)[typeKey],
-                    );
-                    if (variant?.fields) {
-                        result[field.name] = transformFieldValues(
-                            obj as Record<string, unknown>,
-                            variant.fields,
-                            false,
-                        );
-                    }
-                } else if (subFields) {
-                    result[field.name] = transformFieldValues(
-                        obj as Record<string, unknown>,
-                        subFields,
-                        false,
-                    );
-                }
-            }
-        } else if (widget === "list") {
-            const {
-                field: singleField,
-                fields: subFields,
-                types,
-                typeKey = "type",
-            } = field as LooseListField;
-            const arr = result[field.name];
-            if (Array.isArray(arr)) {
-                if (types) {
-                    result[field.name] = arr.map((item) => {
-                        if (typeof item !== "object" || item === null) {
-                            return item;
-                        }
-                        const variant = types.find(
-                            (t) =>
-                                t.name === (item as Record<string, unknown>)[typeKey],
-                        );
-                        return variant?.fields
-                            ? transformFieldValues(
-                                  item as Record<string, unknown>,
-                                  variant.fields,
-                                  false,
-                              )
-                            : item;
-                    });
-                } else if (subFields) {
-                    result[field.name] = arr.map((item) =>
-                        typeof item === "object" && item !== null
-                            ? transformFieldValues(
-                                  item as Record<string, unknown>,
-                                  subFields,
-                                  false,
-                              )
-                            : item,
-                    );
-                } else if (singleField) {
-                    result[field.name] = arr.map(
-                        (value) =>
-                            transformFieldValues(
-                                { [singleField.name]: value },
-                                [singleField],
-                                false,
-                            )[singleField.name],
-                    );
-                }
-            }
+        const value = result[field.name];
+        if (Object.hasOwn(result, field.name) && value != null) {
+            result[field.name] = transformFieldValue(value, field);
         }
     }
 

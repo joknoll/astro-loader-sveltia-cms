@@ -1,6 +1,6 @@
 import type { EntryCollection } from "@sveltia/cms";
 import type { LoaderContext } from "astro/loaders";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { sveltiaLoader } from "../src/loader.ts";
 
@@ -381,8 +381,8 @@ describe("createSchema — relation field TypeScript types", () => {
         };
         const { types } = await sveltiaLoader(collection).createSchema!();
         expect(types).toMatch(/author\s*:\s*\{/);
-        expect(types).toContain('"members"');
-        expect(types).toContain("string");
+        expect(types).toMatch(/collection\s*:\s*"members"/);
+        expect(types).toMatch(/id\s*:\s*string/);
     });
 
     it("types an optional relation field with ?", async () => {
