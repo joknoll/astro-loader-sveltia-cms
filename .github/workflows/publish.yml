@@ -81,4 +81,43 @@ jobs:
                   path: ${{ runner.temp }}
 
             - name: Publish with npm Trusted Publishing
-              run: vp pm publish "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz" --access public --provenance -- --publish-wait-timeout 300000
+              run: vp pm publish "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz" --access public --provenance
+
+            - name: Verify the published download
+              run: |
+                  node --input-type=module <<'JS'
+                  import { readFileSync } from "node:fs";
+                  import { setTimeout } from "node:timers/promises";
+
+                  const { name, version } = JSON.parse(readFileSync("package.json", "utf8"));
+                  const releaseUrl = `https://registry.npmjs.org/${encodeURIComponent(name)}/${version}`;
+                  const deadline = Date.now() + 300_000;
+
+                  function fetchFresh(url, method) {
+                      // npm can cache a 404 from a request made before the tarball is available.
+                      const freshUrl = new URL(url);
+                      freshUrl.searchParams.set("verify", String(Date.now()));
+                      return fetch(freshUrl, { method, signal: AbortSignal.timeout(10_000) });
+                  }
+
+                  let lastError;
+                  while (Date.now() < deadline) {
+                      try {
+                          const metadata = await fetchFresh(releaseUrl, "GET");
+                          if (!metadata.ok) {
+                              throw new Error(`Registry metadata returned HTTP ${metadata.status}`);
+                          }
+                          const { dist } = await metadata.json();
+                          const tarball = await fetchFresh(dist.tarball, "HEAD");
+                          if (!tarball.ok) {
+                              throw new Error(`Tarball returned HTTP ${tarball.status}`);
+                          }
+                          console.log(`Verified download for ${name}@${version}`);
+                          process.exit(0);
+                      } catch (error) {
+                          lastError = error;
+                          await setTimeout(5_000);
+                      }
+                  }
+                  throw new Error(`Timed out verifying ${name}@${version}`, { cause: lastError });
+                  JS
