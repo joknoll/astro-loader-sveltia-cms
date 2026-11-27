@@ -110,16 +110,24 @@ build();
 const server = await preview({ root: site, server: { host: "127.0.0.1", port: 0 } });
 const origin = `http://127.0.0.1:${server.port}`;
 let browser;
+let context;
 let admin;
 const browserWarnings = [];
 const engine = process.env.CMS_BROWSER_ENGINE ?? "chromium";
 let stage = `launch ${engine} (run with --install-browser if dependencies are missing)`;
 try {
-    browser = await { chromium, firefox, webkit }[engine].launch();
-    const context = await browser.newContext({
-        locale: "en-US",
-        serviceWorkers: "block",
-    });
+    const options = { locale: "en-US", serviceWorkers: "block" };
+    if (engine === "webkit") {
+        // WebKit cannot open the origin-private filesystem in an ephemeral context.
+        // The profile is inside the disposable fixture directory.
+        context = await webkit.launchPersistentContext(
+            join(site, ".webkit-profile"),
+            options,
+        );
+    } else {
+        browser = await { chromium, firefox }[engine].launch();
+        context = await browser.newContext(options);
+    }
     context.setDefaultTimeout(15_000);
     const pageErrors = [];
     const configRequests = [];
@@ -301,7 +309,11 @@ try {
     throw error;
 } finally {
     try {
-        await browser?.close();
+        if (browser) {
+            await browser.close();
+        } else {
+            await context?.close();
+        }
     } finally {
         await server.stop();
     }

@@ -89,8 +89,10 @@ provider authentication or Git writes, editorial workflow, localization, or
 every widget and format. The candidate result is evidence for these paths only,
 not a release or a change to the default version.
 
-Scheduled probes also run the test-repo round trip with Playwright Firefox and
-WebKit. These exploratory lanes are not required for release. The scheduled
+The separate [compatibility workflow](../.github/workflows/compatibility.yml) probes
+Playwright Firefox and WebKit. Firefox passed the baseline round trip on Ubuntu.
+WebKit needs a disposable persistent profile for origin-private file storage;
+the probe is not required for release. The scheduled
 Chromium provider probes check the token sign-in UI for GitHub, GitLab, Gitea,
 and Forgejo with network access blocked; they never enter a token, authenticate,
 or issue a Git write. Live provider compatibility requires a separately

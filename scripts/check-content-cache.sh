@@ -176,6 +176,7 @@ cp .astro/loaders/posts.ts warm-types.ts
 printf '\nBody edit.\n' >> content/posts/two/index.md
 TZ=America/Los_Angeles build
 cmp dist/entries.json warm.json
+cmp .astro/loaders/posts.ts warm-types.ts
 
 TZ=Asia/Tokyo build --force
 cmp .astro/loaders/posts.ts warm-types.ts
