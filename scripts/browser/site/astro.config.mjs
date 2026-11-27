@@ -2,6 +2,17 @@ import sveltia from "astro-loader-sveltia-cms";
 import { defineConfig } from "astro/config";
 
 const title = { name: "title", label: "Title", widget: "string" };
+const provider = process.env.CMS_BROWSER_PROVIDER;
+const backend = provider
+    ? {
+          name: provider,
+          repo: "example/content",
+          branch: "main",
+          ...(provider === "gitea" || provider === "forgejo"
+              ? { api_root: "https://example.invalid/api/v1" }
+              : {}),
+      }
+    : { name: "test-repo" };
 
 export default defineConfig({
     base: "/browser-gate",
@@ -11,7 +22,7 @@ export default defineConfig({
             route: "/cms",
             title: "Browser Gate CMS",
             config: {
-                backend: { name: "test-repo" },
+                backend,
                 media_folder: "public/media",
                 public_folder: "/media",
                 output: { yaml: { quote: "double" } },

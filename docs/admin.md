@@ -31,3 +31,13 @@ export const prerender = true;
 The wrapper declares its own `prerender` because route exports on imported
 components do not apply to the wrapper page. The integration's `route` option
 alone suffices when only the URL of the injected page needs to change.
+
+## Build measurements
+
+On the local Node 26.13.1 checkout with Sveltia 0.269.2 and Astro 7.4.13, the
+production example emitted a 2.67 MB admin entry script (817 kB gzip). Three
+fresh Node processes imported the built loader in 354 to 472 ms and generated
+the first three-field schema in about 9 ms. These are local wall-clock
+observations, not CI targets or a browser startup benchmark. The admin remains
+a separate route bundle; the implementation does not change bundling or defer
+type generation on the basis of these measurements.

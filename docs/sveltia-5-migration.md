@@ -85,6 +85,13 @@ and headless Chromium:
 checkout. The check reads the saved bytes from OPFS without reserializing and
 copies them into the disposable Astro site before each build. It does not
 simulate a Git commit or delete, use a mocked CMS backend, or verify live Git
-providers, editorial workflow, localization, every widget/format, or other
-browser engines. The candidate result is evidence for these paths only, not a
-release or a change to the default version.
+provider authentication or Git writes, editorial workflow, localization, or
+every widget and format. The candidate result is evidence for these paths only,
+not a release or a change to the default version.
+
+Scheduled probes also run the test-repo round trip with Playwright Firefox and
+WebKit. These exploratory lanes are not required for release. The scheduled
+Chromium provider probes check the token sign-in UI for GitHub, GitLab, Gitea,
+and Forgejo with network access blocked; they never enter a token, authenticate,
+or issue a Git write. Live provider compatibility requires a separately
+authorized disposable repository.

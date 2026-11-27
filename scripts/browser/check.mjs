@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { chromium, expect } from "@playwright/test";
+import { chromium, expect, firefox, webkit } from "@playwright/test";
 
 const site = process.argv[2];
 const require = createRequire(join(site, "package.json"));
@@ -112,9 +112,10 @@ const origin = `http://127.0.0.1:${server.port}`;
 let browser;
 let admin;
 const browserWarnings = [];
-let stage = "launch Chromium (run with --install-browser if dependencies are missing)";
+const engine = process.env.CMS_BROWSER_ENGINE ?? "chromium";
+let stage = `launch ${engine} (run with --install-browser if dependencies are missing)`;
 try {
-    browser = await chromium.launch();
+    browser = await { chromium, firefox, webkit }[engine].launch();
     const context = await browser.newContext({
         locale: "en-US",
         serviceWorkers: "block",
@@ -178,6 +179,7 @@ try {
     await expect(admin.getByRole("button", { name: "Show Account Menu" })).toBeVisible({
         timeout: 15_000,
     });
+    await expect(admin).toHaveTitle(/Browser Gate CMS/);
     assert.deepEqual(await readTestRepo(admin), {});
 
     stage = "create and render a JSON entry";

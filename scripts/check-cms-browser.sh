@@ -6,6 +6,8 @@ project=$root
 archive=
 candidate=
 install_browser=false
+engine=${CMS_BROWSER_ENGINE:-chromium}
+provider=${CMS_BROWSER_PROVIDER:-}
 usage() {
     printf 'Usage: bash %s [--archive package.tgz | --candidate] [--install-browser]\n' "$0" >&2
     exit 2
@@ -24,6 +26,9 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z $archive || -z $candidate ]] || usage
 [[ -z $candidate || $candidate =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || usage
+case "$engine" in chromium|firefox|webkit) ;; *) usage ;; esac
+case "$provider" in ""|github|gitlab|gitea|forgejo) ;; *) usage ;; esac
+[[ -z $provider || $engine == chromium ]] || usage
 
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/sveltia-browser.XXXXXX")
 cleanup() {
@@ -66,7 +71,7 @@ if [[ -n $candidate && $version != "$candidate" ]]; then
     exit 1
 fi
 lane=${candidate:+candidate}
-printf 'Sveltia browser gate (%s): %s\n' "${lane:-locked workspace}" "$version"
+printf 'Sveltia browser gate (%s): %s, %s, %s\n' "${lane:-locked workspace}" "$version" "$engine" "${provider:-test-repo}"
 
 site=$scratch/site
 package=$site/node_modules/astro-loader-sveltia-cms
@@ -86,7 +91,11 @@ printf '{"type":"module"}\n' > "$site/package.json"
 browser_tools=$scratch/tools
 npm install --prefix "$browser_tools" --no-save --no-package-lock --prefer-offline --ignore-scripts @playwright/test@1.65.0
 if "$install_browser"; then
-    "$browser_tools/node_modules/.bin/playwright" install --with-deps chromium
+    "$browser_tools/node_modules/.bin/playwright" install --with-deps "$engine"
 fi
-cp "$root/scripts/browser/check.mjs" "$browser_tools"
-node "$browser_tools/check.mjs" "$site"
+check=check.mjs
+if [[ -n $provider ]]; then
+    check=check-provider.mjs
+fi
+cp "$root/scripts/browser/$check" "$browser_tools"
+node "$browser_tools/$check" "$site"

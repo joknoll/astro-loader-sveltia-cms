@@ -38,3 +38,16 @@ export const collections = {
 ```
 
 Add an explicit schema for the shape actually stored, including locale keys for a `single_file` layout. Native loaders do not automatically apply `sveltiaLoader` field transforms or Sveltia's membership rules.
+
+## Validation boundaries
+
+The loader checks the stored value shape, required fields, select values, and
+variant discriminators. It is not an implementation of the CMS editor's
+validation rules, such as field patterns, minimums, maximums, uniqueness, and
+localized requirements. It also does not recompute values managed by the CMS.
+Use an explicit Astro schema to impose stricter application constraints.
+
+Astro's experimental `contentIntellisense` feature can associate its generated
+schemas with source files. Leave that association off for transformed Sveltia
+collections: for example, the generated schema accepts a relation object after
+loader transforms, whereas the source file correctly holds a slug string.
