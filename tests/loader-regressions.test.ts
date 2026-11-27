@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import type { EntryCollection, Field } from "@sveltia/cms";
 import type { LoaderContext } from "astro/loaders";
@@ -9,10 +9,12 @@ import { isEntryCollection, readCmsConfig } from "../src/config.ts";
 import { sveltiaLoader } from "../src/loader.ts";
 import { sveltiaSchema } from "../src/schema.ts";
 import { transformFieldValues } from "../src/transforms.ts";
+import { mockLoadContext } from "./load-context.ts";
 
 vi.mock("astro/loaders", () => ({ glob: vi.fn(() => ({ load: vi.fn() })) }));
 vi.mock("node:fs", async (importOriginal) => ({
     ...(await importOriginal<typeof import("node:fs")>()),
+    existsSync: vi.fn(),
     readFileSync: vi.fn(),
 }));
 
@@ -47,34 +49,122 @@ describe("collection storage", () => {
     });
 
     it.each([
-        [undefined, "md"],
         ["yaml", "yml"],
+        ["yml", "yml"],
         ["json", "json"],
         ["toml", "toml"],
-        ["raw", "txt"],
-        ["yaml-frontmatter", "md"],
     ])("infers the extension for %s", async (format, extension) => {
         await sveltiaLoader({
             name: "posts",
-            folder: "content",
+            folder: "/content",
             fields: [],
             format,
-        }).load({} as LoaderContext);
-        expect(glob).toHaveBeenCalledWith({
-            pattern: `**/*.${extension}`,
-            base: "content",
-        });
+        }).load(mockLoadContext().context);
+        expect(glob).toHaveBeenCalledWith(
+            expect.objectContaining({ pattern: `*.${extension}`, base: "./content" }),
+        );
     });
 
-    it("preserves an explicit extension", async () => {
-        await sveltiaLoader({
-            name: "posts",
-            folder: "content",
-            fields: [],
-            format: "yaml",
-            extension: "yaml",
-        }).load({} as LoaderContext);
-        expect(glob).toHaveBeenCalledWith({ pattern: "**/*.yaml", base: "content" });
+    it.each([
+        [{ folder: "../content" }, /repository-relative/],
+        [{ format: "raw" }, /unsupported format "raw"/],
+        [{ format: "json-frontmatter" }, /unsupported format "json-frontmatter"/],
+        [
+            { format: "yaml-frontmatter", frontmatter_delimiter: "~~~" },
+            /frontmatter_delimiter/,
+        ],
+        [{ format: "yaml", extension: "json" }, /unsupported format/],
+        [{ i18n: true }, /i18n layout/],
+        [{ path: "{{year}}/{{slug}}" }, /unsupported "path"/],
+        [{ index_file: { name: "_index", fields: [] } }, /"index_file"/],
+        [{ filter: { field: "lang", value: "en" } }, /"filter"/],
+        [
+            {
+                fields: [
+                    {
+                        name: "author",
+                        widget: "relation",
+                        collection: "authors",
+                        value_field: "id",
+                    },
+                ],
+            },
+            /field "author".*slug-based/,
+        ],
+    ] satisfies [Partial<EntryCollection>, RegExp][])(
+        "rejects unsupported configuration %o",
+        async (changes, error) => {
+            const loader = sveltiaLoader({
+                name: "posts",
+                folder: "content",
+                fields: [],
+                ...changes,
+            });
+            await expect(loader.createSchema()).rejects.toThrow(error);
+            await expect(loader.load(mockLoadContext().context)).rejects.toThrow(error);
+            expect(glob).not.toHaveBeenCalled();
+        },
+    );
+});
+
+describe("collection IDs", () => {
+    it("rejects an ordinary path and a shared index path with the same ID", async () => {
+        vi.mocked(existsSync).mockReturnValueOnce(true);
+        vi.mocked(glob).mockImplementationOnce(({ generateId }) => ({
+            name: "glob",
+            load: async () => {
+                const base = new URL("file:///site/content/");
+                const data = {};
+                expect(generateId!({ entry: "company.md", base, data })).toBe(
+                    "company",
+                );
+                generateId!({ entry: "company/index.md", base, data });
+            },
+        }));
+        await expect(
+            sveltiaLoader({
+                name: "pages",
+                folder: "content",
+                nested: {},
+                meta: { path: { index_file: "index" } },
+                fields: [],
+            }).load(mockLoadContext().context),
+        ).rejects.toThrow(
+            /duplicate entry ID "company".*company\.md.*company\/index\.md/,
+        );
+    });
+});
+
+describe("collection cache", () => {
+    const posts: EntryCollection = {
+        name: "posts",
+        folder: "content/posts",
+        fields: [{ name: "author", widget: "string" }],
+    };
+
+    it("clears unknown or changed collections but keeps unchanged entries cached", async () => {
+        const { context, clear } = mockLoadContext();
+        await sveltiaLoader(posts).load(context);
+        await sveltiaLoader({ ...posts }).load(context);
+        expect(clear).toHaveBeenCalledTimes(1);
+
+        await sveltiaLoader({ ...posts, folder: "archive/posts" }).load(context);
+        expect(clear).toHaveBeenCalledTimes(2);
+    });
+
+    it("invalidates the cache on retry even if the failed configuration is reverted", async () => {
+        const { context, clear } = mockLoadContext();
+        await sveltiaLoader(posts).load(context);
+        vi.mocked(glob).mockReturnValueOnce({
+            name: "glob",
+            load: vi.fn().mockRejectedValue(new Error("could not load collection")),
+        });
+
+        await expect(
+            sveltiaLoader({ ...posts, folder: "archive/posts" }).load(context),
+        ).rejects.toThrow("could not load collection");
+        await sveltiaLoader(posts).load(context);
+        expect(clear).toHaveBeenCalledTimes(3);
     });
 });
 

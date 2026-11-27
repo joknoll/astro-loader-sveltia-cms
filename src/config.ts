@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { CmsConfig, EntryCollection, FileCollection } from "@sveltia/cms";
 
@@ -20,8 +22,10 @@ export function isEntryCollection(c: unknown): c is FolderCollection {
     );
 }
 
-export function readCmsConfig(): CmsConfig {
-    const configPath = `${process.cwd()}/${CONFIG_PATH}`;
+export function readCmsConfig(root?: URL): CmsConfig {
+    const configPath = root
+        ? fileURLToPath(new URL(CONFIG_PATH, root))
+        : resolve(CONFIG_PATH);
     try {
         const raw = readFileSync(configPath, "utf-8");
         const parsed: unknown = JSON.parse(raw);

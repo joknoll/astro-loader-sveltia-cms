@@ -74,7 +74,7 @@ describe("sveltiaCms — options handling", () => {
 });
 
 describe("sveltiaCms — astro:config:done type injection", () => {
-    it("calls injectTypes with a union of collection names", () => {
+    it("augments the loader module with its collection names", () => {
         const integration = sveltiaCms({
             config: {
                 backend: { name: "test-repo" },
@@ -95,8 +95,10 @@ describe("sveltiaCms — astro:config:done type injection", () => {
             injectTypes: mockInjectTypes,
         });
 
-        expect(injectedContent).toContain('"posts"');
-        expect(injectedContent).toContain('"pages"');
+        expect(injectedContent).toContain("export {};");
+        expect(injectedContent).toContain("interface SveltiaCollections");
+        expect(injectedContent).toContain('"posts": true;');
+        expect(injectedContent).toContain('"pages": true;');
     });
 
     it("does not call injectTypes when there are no entry collections", () => {

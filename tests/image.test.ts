@@ -3,6 +3,7 @@ import type { LoaderContext } from "astro/loaders";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { sveltiaLoader } from "../src/loader.ts";
+import { mockLoadContext } from "./load-context.ts";
 
 // Capture the LoaderContext passed to the inner glob loader so tests can
 // invoke parseData directly and inspect what reaches the original handler.
@@ -25,12 +26,13 @@ async function transformData(
     data: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
     let received: Record<string, unknown> | undefined;
-    const originalParseData = vi.fn(async (opts: { data: unknown }) => {
-        received = opts.data as Record<string, unknown>;
+    const { context } = mockLoadContext({
+        parseData: async ({ data }) => {
+            received = data;
+            return data;
+        },
     });
-    await sveltiaLoader(collection).load({
-        parseData: originalParseData,
-    } as unknown as LoaderContext);
+    await sveltiaLoader(collection).load(context);
     await capturedContext.parseData({ id: "test", data } as never);
     return received!;
 }
@@ -48,17 +50,17 @@ describe("createSchema — image field TypeScript types", () => {
         expect(types).toContain('import type { ImageMetadata } from "astro"');
     });
 
-    it("types image field as ImageMetadata", async () => {
+    it("types image field as ImageMetadata or a URL string", async () => {
         const collection: EntryCollection = {
             name: "posts",
             folder: "src/content/posts",
             fields: [{ name: "cover", widget: "image" }],
         };
         const { types } = await sveltiaLoader(collection).createSchema!();
-        expect(types).toMatch(/cover\s*:\s*ImageMetadata/);
+        expect(types).toMatch(/cover\s*:\s*ImageMetadata\s*\|\s*string/);
     });
 
-    it("optional image field is typed as ImageMetadata | undefined", async () => {
+    it("optional image field is typed as ImageMetadata | string | undefined", async () => {
         const collection: EntryCollection = {
             name: "posts",
             folder: "src/content/posts",
@@ -101,16 +103,16 @@ describe("image path normalisation", () => {
         expect(result.cover).toBe("__ASTRO_IMAGE_../../assets/photo.jpg");
     });
 
-    it("passes through a URL unchanged (besides prefix)", async () => {
+    it("keeps a remote URL unchanged", async () => {
         const result = await transformData(collection, {
             cover: "https://example.com/img.png",
         });
-        expect(result.cover).toBe("__ASTRO_IMAGE_https://example.com/img.png");
+        expect(result.cover).toBe("https://example.com/img.png");
     });
 
-    it("passes through an absolute path unchanged (besides prefix)", async () => {
+    it("keeps a public URL without a source path to import", async () => {
         const result = await transformData(collection, { cover: "/static/photo.jpg" });
-        expect(result.cover).toBe("__ASTRO_IMAGE_/static/photo.jpg");
+        expect(result.cover).toBe("/static/photo.jpg");
     });
 
     it("passes through a Vite alias path unchanged (besides prefix)", async () => {
@@ -128,15 +130,13 @@ describe("image field — null and missing values", () => {
         fields: [{ name: "cover", widget: "image", required: false }],
     };
 
-    it("leaves a null image value untouched", async () => {
-        const result = await transformData(collection, { cover: null });
-        expect(result.cover).toBeNull();
-    });
-
-    it("leaves an empty string image value untouched", async () => {
-        const result = await transformData(collection, { cover: "" });
-        expect(result.cover).toBe("");
-    });
+    it.each([null, "", " "])(
+        "treats optional blank image %s as absent",
+        async (cover) => {
+            const result = await transformData(collection, { cover });
+            expect(result.cover).toBeUndefined();
+        },
+    );
 
     it("leaves a missing image key untouched", async () => {
         const result = await transformData(collection, { title: "hello" });
@@ -163,7 +163,7 @@ describe("image field — multiple: true", () => {
 
     it("skips empty strings inside a multiple image array", async () => {
         const result = await transformData(collection, { gallery: ["a.jpg", ""] });
-        expect(result.gallery).toEqual(["__ASTRO_IMAGE_./a.jpg", ""]);
+        expect(result.gallery).toEqual(["__ASTRO_IMAGE_./a.jpg"]);
     });
 });
 

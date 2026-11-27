@@ -15,9 +15,10 @@ export const prerender = true;
     <body>
         <script>
             import { init } from "@sveltia/cms";
-            import { config } from "virtual:astro-loader-sveltia-cms/config";
+            import { config, title } from "virtual:astro-loader-sveltia-cms/config";
 
-            init({ config });
+            // Sveltia uses app_title for the browser tab after initialization.
+            init({ config: { ...config, app_title: title } });
         </script>
     </body>
 </html>
