@@ -24,7 +24,13 @@ const author = await getEntry(post.data.author);
         <p>{author.data.name}</p>
     </hgroup>
     <time>{post.data.date}</time>
-    {post.data.cover && <Image src={post.data.cover} alt={post.data.title} />}
+    {
+        typeof post.data.cover === "string" ? (
+            <img src={post.data.cover} alt={post.data.title} />
+        ) : (
+            post.data.cover && <Image src={post.data.cover} alt={post.data.title} />
+        )
+    }
 </header>
 
 <article>

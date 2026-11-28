@@ -1,5 +1,6 @@
 import type {
     CodeField,
+    ComputeField,
     Field,
     FileField,
     HiddenField,
@@ -10,7 +11,6 @@ import type {
     SelectFieldValue,
     VariableFieldType,
 } from "@sveltia/cms";
-import type { ImageFunction } from "astro/content/config";
 import { z } from "astro/zod";
 
 // Upstream ObjectField/ListField are unions whose variant-specific props can't
@@ -20,22 +20,12 @@ export type LooseObjectField = {
     types?: VariableFieldType[];
     typeKey?: string;
 };
-export type LooseListField = LooseObjectField & { field?: Field };
+export type LooseListField = LooseObjectField & {
+    field?: Field;
+    map_key_field?: string;
+};
 
-export type SchemaContext = { image?: ImageFunction; imageSchemas: z.ZodType[] };
-
-/**
- * File formats that store the document body separately from frontmatter.
- * The default format (undefined) is yaml-frontmatter; "frontmatter" is the
- * extension-based auto-detect variant.
- */
-export const frontmatterFormats = new Set([
-    "frontmatter",
-    "yaml-frontmatter",
-    "toml-frontmatter",
-    "json-frontmatter",
-    undefined,
-]);
+export type SchemaContext = { imageSchemas: z.ZodType[] };
 
 export function getWidget(field: Field): string {
     return "widget" in field && field.widget ? field.widget : "string";
@@ -90,6 +80,7 @@ export function selectValuesToZod(values: SelectFieldValue[]): z.ZodType {
 type ZodObjectShape = z.ZodObject<Record<string, z.ZodType>>;
 
 function variantsToDiscriminatedUnion(
+    fieldName: string,
     variants: VariableFieldType[],
     typeKey: string,
     ctx?: SchemaContext,
@@ -97,12 +88,21 @@ function variantsToDiscriminatedUnion(
     if (variants.length === 0) {
         return z.object({});
     }
-    const schemas = variants.map((variant) =>
-        z.object({
-            [typeKey]: z.literal(variant.name),
-            ...fieldsToShape(variant.fields ?? [], ctx),
-        }),
-    );
+    const names = new Set<string>();
+    const schemas = variants.map(({ name, fields = [] }) => {
+        if (names.has(name)) {
+            throw new Error(
+                `[sveltiaLoader] Field "${fieldName}" has duplicate variant "${name}".`,
+            );
+        }
+        if (fields.some((field) => field.name === typeKey)) {
+            throw new Error(
+                `[sveltiaLoader] Field "${fieldName}" variant "${name}" has a subfield named "${typeKey}", which is reserved for the type discriminator. Set typeKey to a different name.`,
+            );
+        }
+        names.add(name);
+        return z.object({ [typeKey]: z.literal(name), ...fieldsToShape(fields, ctx) });
+    });
     if (schemas.length === 1) {
         return schemas[0];
     }
@@ -120,16 +120,54 @@ function numberFieldToZod(field: Field): z.ZodType {
     return z.number();
 }
 
-function imageFieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
-    const isMultiple = (field as ImageField).multiple;
-    if (ctx?.image) {
-        return isMultiple ? z.array(ctx.image()) : ctx.image();
+function computeFieldToZod(field: ComputeField): z.ZodType {
+    switch (field.value_type) {
+        case "int":
+            return z.int().nullable();
+        case "float":
+            return z.number().nullable();
+        case "int/string":
+        case "float/string":
+            return z.string();
+        default:
+            return field.value === "{{index}}"
+                ? z.union([z.int().nonnegative(), z.literal("")])
+                : z.string();
     }
-    const inner = z.string();
-    if (ctx) {
-        ctx.imageSchemas.push(inner);
-    }
-    return isMultiple ? z.array(inner) : inner;
+}
+
+function dateFieldToZod(): z.ZodType {
+    return z
+        .union(
+            [
+                z.date(),
+                z.iso.date(),
+                z.iso.datetime({ local: true, offset: true }),
+                z.number(),
+            ],
+            {
+                error: "Expected an ISO date or timestamp, a Date, or epoch milliseconds",
+            },
+        )
+        .transform((value) => {
+            if (
+                typeof value === "string" &&
+                value.includes("T") &&
+                !/(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+            ) {
+                return new Date(`${value}Z`);
+            }
+            // Return a plain Date even when a parser supplied a Date subclass.
+            return new Date(value);
+        })
+        .pipe(z.date());
+}
+
+function imageFieldToZod(field: ImageField, ctx?: SchemaContext): z.ZodType {
+    // Astro resolves marked local image strings to ImageMetadata after Zod parsing.
+    const inner = z.string().regex(/\S/, "Expected a non-blank image path");
+    ctx?.imageSchemas.push(inner);
+    return field.multiple ? z.array(inner) : inner;
 }
 
 /**
@@ -182,7 +220,7 @@ function hiddenFieldToZod(field: Field): z.ZodType {
 function objectFieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
     const { fields, types, typeKey = "type" } = field as LooseObjectField;
     if (types) {
-        return variantsToDiscriminatedUnion(types, typeKey, ctx);
+        return variantsToDiscriminatedUnion(field.name, types, typeKey, ctx);
     }
     return z.object(fields ? fieldsToShape(fields, ctx) : {});
 }
@@ -193,19 +231,25 @@ function listFieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
         fields,
         types,
         typeKey = "type",
+        map_key_field: mapKeyField,
     } = field as LooseListField;
 
     if (types) {
+        if (mapKeyField === typeKey) {
+            throw new Error(
+                `[sveltiaLoader] Field "${field.name}" uses "${typeKey}" for both map_key_field and the type discriminator. Set typeKey to a different name.`,
+            );
+        }
         if (types.length === 0) {
             return z.array(z.any());
         }
-        return z.array(variantsToDiscriminatedUnion(types, typeKey, ctx));
+        return z.array(variantsToDiscriminatedUnion(field.name, types, typeKey, ctx));
     }
     if (fields) {
         return z.array(z.object(fieldsToShape(fields, ctx)));
     }
     if (singleField) {
-        return z.array(fieldToZod(singleField, ctx));
+        return z.array(applyOptional(fieldToZod(singleField, ctx), singleField));
     }
     return z.array(z.string());
 }
@@ -217,10 +261,12 @@ export function fieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
         case "color":
         case "map":
         case "uuid":
-        case "compute":
         case "markdown":
         case "richtext":
             return z.string();
+
+        case "compute":
+            return computeFieldToZod(field as ComputeField);
 
         case "number":
             return numberFieldToZod(field);
@@ -229,10 +275,10 @@ export function fieldToZod(field: Field, ctx?: SchemaContext): z.ZodType {
             return z.boolean();
 
         case "datetime":
-            return z.coerce.date();
+            return dateFieldToZod();
 
         case "image":
-            return imageFieldToZod(field, ctx);
+            return imageFieldToZod(field as ImageField, ctx);
 
         case "file":
             return (field as FileField).multiple ? z.array(z.string()) : z.string();

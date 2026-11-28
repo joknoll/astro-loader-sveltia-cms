@@ -9,12 +9,17 @@ export default defineConfig({
         exports: { customExports: { "./admin.astro": "./dist/admin.astro" } },
     },
     lint: {
-        ignorePatterns: ["dist/**", "example/**"],
+        // The standalone browser fixture resolves astro:content after its own sync.
+        ignorePatterns: ["dist/**", "example/**", "scripts/browser/site/**"],
         rules: { curly: ["error", "all"], "no-nested-ternary": "error" },
         options: { typeAware: true, typeCheck: true },
     },
     fmt: {
-        ignorePatterns: ["pnpm-lock.yaml", "example/src/content/**"],
+        ignorePatterns: [
+            "pnpm-lock.yaml",
+            "example/src/content/**",
+            "fixtures/sveltia-*/**",
+        ],
         tabWidth: 4,
         useTabs: false,
         printWidth: 88,

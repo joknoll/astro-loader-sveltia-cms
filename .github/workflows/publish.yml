@@ -21,6 +21,8 @@ jobs:
     build:
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        outputs:
+            artifact: ${{ steps.archive.outputs.artifact }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -55,18 +57,37 @@ jobs:
                   vp run build
                   vp run --filter example build
                   vp pm pack --out "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz"
+                  cd "$RUNNER_TEMP"
+                  sha512sum astro-loader-sveltia-cms.tgz > astro-loader-sveltia-cms.tgz.sha512
+
+            - name: Check packed consumers at the Astro floor and workspace version
+              run: bash scripts/check-packed-consumer.sh "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz"
+
+            - name: Save and render content in Chromium
+              run: bash scripts/check-cms-browser.sh --archive "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz" --install-browser
+
+            - name: Confirm and identify the checked artifact
+              id: archive
+              working-directory: ${{ runner.temp }}
+              run: |
+                  sha512sum --check astro-loader-sveltia-cms.tgz.sha512
+                  echo "artifact=npm-package-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
             - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: npm-package
-                  path: ${{ runner.temp }}/astro-loader-sveltia-cms.tgz
+                  name: ${{ steps.archive.outputs.artifact }}
+                  path: |
+                      ${{ runner.temp }}/astro-loader-sveltia-cms.tgz
+                      ${{ runner.temp }}/astro-loader-sveltia-cms.tgz.sha512
                   if-no-files-found: error
+                  retention-days: 90
+                  compression-level: 0
 
     publish:
         needs: build
         if: github.ref_type == 'tag' && (github.event_name == 'push' || inputs.publish)
         runs-on: ubuntu-latest
-        timeout-minutes: 10
+        timeout-minutes: 15
         permissions:
             contents: read
             id-token: write
@@ -82,75 +103,35 @@ jobs:
 
             - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
               with:
-                  name: npm-package
+                  name: ${{ needs.build.outputs.artifact }}
                   path: ${{ runner.temp }}
+
+            - name: Verify the downloaded release artifact
+              working-directory: ${{ runner.temp }}
+              run: sha512sum --check astro-loader-sveltia-cms.tgz.sha512
 
             - name: Check for an existing publish of this tarball
               id: registry
-              run: |
-                  node --input-type=module <<'JS'
-                  import { createHash } from "node:crypto";
-                  import { appendFileSync, readFileSync } from "node:fs";
-                  import { join } from "node:path";
-
-                  const { name, version } = JSON.parse(readFileSync("package.json", "utf8"));
-                  const url = `https://registry.npmjs.org/${encodeURIComponent(name)}/${version}?verify=${Date.now()}`;
-                  const metadata = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-                  if (metadata.status === 404) process.exit(0);
-                  if (!metadata.ok) throw new Error(`Registry metadata returned HTTP ${metadata.status}`);
-
-                  const { dist } = await metadata.json();
-                  const tarball = readFileSync(join(process.env.RUNNER_TEMP, "astro-loader-sveltia-cms.tgz"));
-                  const integrity = "sha512-" + createHash("sha512").update(tarball).digest("base64");
-                  if (dist.integrity !== integrity) {
-                      throw new Error(`${name}@${version} already exists with a different tarball`);
-                  }
-                  console.log(`npm already has this tarball for ${name}@${version}`);
-                  appendFileSync(process.env.GITHUB_OUTPUT, "published=true\n");
-                  JS
+              run: node scripts/check-npm-release.mjs preflight "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz"
 
             - name: Publish with npm Trusted Publishing
-              if: steps.registry.outputs.published != 'true'
-              run: vp pm publish "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz" --access public --provenance
+              id: publish
+              if: steps.registry.outputs.published == 'false'
+              continue-on-error: true
+              # The build checked the tagged commit. Registry availability is checked below.
+              run: >-
+                  timeout --kill-after=10s 180s
+                  vp pm publish "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz"
+                  --access public --provenance --no-git-checks
+                  -- --publish-wait-timeout 0 --registry https://registry.npmjs.org/
 
-            - name: Verify the published download
-              run: |
-                  node --input-type=module <<'JS'
-                  import { readFileSync } from "node:fs";
-                  import { setTimeout } from "node:timers/promises";
+            - name: Verify registry integrity and downloaded bytes
+              if: "!cancelled() && steps.registry.outcome == 'success'"
+              run: node scripts/check-npm-release.mjs verify "$RUNNER_TEMP/astro-loader-sveltia-cms.tgz"
 
-                  const { name, version } = JSON.parse(readFileSync("package.json", "utf8"));
-                  const releaseUrl = `https://registry.npmjs.org/${encodeURIComponent(name)}/${version}`;
-                  const deadline = Date.now() + 300_000;
-
-                  function fetchFresh(url, method) {
-                      // npm can cache a 404 from a request made before the tarball is available.
-                      const freshUrl = new URL(url);
-                      freshUrl.searchParams.set("verify", String(Date.now()));
-                      return fetch(freshUrl, { method, signal: AbortSignal.timeout(10_000) });
-                  }
-
-                  let lastError;
-                  while (Date.now() < deadline) {
-                      try {
-                          const metadata = await fetchFresh(releaseUrl, "GET");
-                          if (!metadata.ok) {
-                              throw new Error(`Registry metadata returned HTTP ${metadata.status}`);
-                          }
-                          const { dist } = await metadata.json();
-                          const tarball = await fetchFresh(dist.tarball, "HEAD");
-                          if (!tarball.ok) {
-                              throw new Error(`Tarball returned HTTP ${tarball.status}`);
-                          }
-                          console.log(`Verified download for ${name}@${version}`);
-                          process.exit(0);
-                      } catch (error) {
-                          lastError = error;
-                          await setTimeout(5_000);
-                      }
-                  }
-                  throw new Error(`Timed out verifying ${name}@${version}`, { cause: lastError });
-                  JS
+            - name: Report a successful recovery after a publish error
+              if: steps.publish.outcome == 'failure'
+              run: echo "::warning::The publish command failed, but npm is serving the exact checked tarball."
 
     notify:
         needs: [build, publish]
@@ -160,4 +141,4 @@ jobs:
             issues: write
         with:
             title: npm release needs attention
-            details: Check the build and publish logs. If npm already published the same tarball, a retry will verify the download.
+            details: Check the build and publish logs. Re-run failed jobs to reuse the checked tarball and verify what npm serves.

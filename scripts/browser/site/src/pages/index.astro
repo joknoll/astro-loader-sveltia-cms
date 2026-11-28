@@ -1,0 +1,41 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, render } from "astro:content";
+
+const posts = await getCollection("posts");
+const bundles = await Promise.all(
+    (await getCollection("bundles")).map(async (entry) => ({
+        entry,
+        Content: (await render(entry)).Content,
+    })),
+);
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Browser Gate Site</title>
+    </head>
+    <body>
+        <main>
+            <section aria-label="Posts">
+                {posts.map(({ id, data }) => (
+                    <article data-id={id}>
+                        <h1>{data.title}</h1>
+                        <p>{data.body}</p>
+                    </article>
+                ))}
+            </section>
+            <section aria-label="Bundles">
+                {bundles.map(({ entry, Content }) => (
+                    <article data-id={entry.id}>
+                        <h1>{entry.data.title}</h1>
+                        <Image src={entry.data.cover} alt="Uploaded bundle cover" width={8} />
+                        <Content />
+                    </article>
+                ))}
+            </section>
+        </main>
+    </body>
+</html>

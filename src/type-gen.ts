@@ -1,4 +1,4 @@
-import type { EntryCollection } from "@sveltia/cms";
+import type { Field } from "@sveltia/cms";
 import type { z } from "astro/zod";
 import type { TypeOverrideMap } from "zod-to-ts";
 import {
@@ -8,22 +8,24 @@ import {
     zodToTs,
 } from "zod-to-ts";
 
-import { frontmatterFormats, sveltiaSchema } from "./schema.js";
+import { sveltiaSchema } from "./schema.js";
 import type { SchemaContext } from "./schema.js";
 
 type TypeOverrideFunction = TypeOverrideMap extends Map<unknown, infer V> ? V : never;
 
-const imageOverride: TypeOverrideFunction = (typescript) =>
-    typescript.factory.createTypeReferenceNode("ImageMetadata");
+const imageOverride: TypeOverrideFunction = ({ factory, SyntaxKind }) =>
+    factory.createUnionTypeNode([
+        factory.createTypeReferenceNode("ImageMetadata"),
+        factory.createKeywordTypeNode(SyntaxKind.StringKeyword),
+    ]);
 
 export async function buildCollectionSchema(
-    collection: EntryCollection,
+    fields: Field[],
 ): Promise<{ schema: z.ZodType; types: string }> {
     const ctx: SchemaContext = { imageSchemas: [] };
-    const schema = sveltiaSchema(collection.fields, {
-        excludeBody: frontmatterFormats.has(collection.format),
-        ctx,
-    });
+    const schema = sveltiaSchema(fields, { excludeBody: false, ctx }).describe(
+        "Describes the data passed to Astro validation after Sveltia loader transforms, not the raw CMS file or the final entry data returned by Astro. This is not a Sveltia CMS configuration or editor validation schema.",
+    );
 
     const overrides: TypeOverrideMap = new Map();
     for (const s of ctx.imageSchemas) {

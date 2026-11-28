@@ -181,6 +181,29 @@ describe("sveltiaLoader — object form", () => {
         expect(s.shape).toHaveProperty("name");
     });
 
+    it.each([
+        [{ extension: "json" }, ["body", "content"]],
+        [{ extension: "yaml" }, ["body", "content"]],
+        [{ body_field: { inline: true } }, ["body", "content"]],
+        [{ body_field: { key: "content" } }, ["body"]],
+    ] satisfies [Partial<EntryCollection>, string[]][])(
+        "uses configured body placement: %o",
+        async (storage, keys) => {
+            const { schema } = await sveltiaLoader({
+                name: "posts",
+                folder: "content",
+                fields: [
+                    { name: "body", widget: "text" },
+                    { name: "content", widget: "markdown" },
+                ],
+                ...storage,
+            }).createSchema();
+            expect(Object.keys((schema as unknown as { shape: object }).shape)).toEqual(
+                keys,
+            );
+        },
+    );
+
     it("uses default extension 'md' when extension is not specified", () => {
         const loader = sveltiaLoader({
             name: "posts",
